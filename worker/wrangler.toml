@@ -1,0 +1,20 @@
+name = "tack-api"
+main = "src/index.js"
+compatibility_date = "2026-07-01"
+
+# Se publica en *.workers.dev. Si quieres dominio propio, añade aquí la ruta.
+
+[vars]
+DESTINO = "tu@correo.com"
+REMITENTE = "Tack Comment <tack@tudominio.com>"
+# Orígenes autorizados a enviar comentarios (CORS). Uno por dominio de revisión.
+ORIGENES_PERMITIDOS = "https://staging.tucliente.com,http://localhost:8791"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tack"
+database_id = "PON_AQUI_EL_TUYO"   # lo da: wrangler d1 create tack
+
+# Secrets (wrangler secret put ...):
+#   RESEND_API_KEY   clave de Resend
+#   CLAVE_ADMIN      la que nos deja marcar un comentario como resuelto

@@ -1,0 +1,17 @@
+# lo que publicamos nosotros, con nuestro backend dentro
+dist/
+
+# capturas y salidas de las pruebas
+qa/capturas/
+qa/videos/
+
+node_modules/
+.DS_Store
+*.log
+wrangler.local.toml
+
+# interno de Websalia, no publicable
+docs/README-interno.md
+propuestas/
+.wrangler/
+!docs/img/
