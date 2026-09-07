@@ -39,6 +39,10 @@ export default {
       if (url.pathname === '/api/comentarios' && request.method === 'GET') {
         return await listar(url, env, cors);
       }
+      const r = url.pathname.match(/^\/api\/comentarios\/([\w-]+)\/respuestas$/);
+      if (r && request.method === 'POST') {
+        return await responder(r[1], request, env, cors);
+      }
       const m = url.pathname.match(/^\/api\/comentarios\/([\w-]+)(\/estado)?$/);
       if (m && m[2] && request.method === 'POST') {
         return await cambiarEstado(m[1], request, env, cors);
@@ -118,6 +122,71 @@ async function crear(request, env, cors) {
   return json({ ok: true, id }, 200, cors);
 }
 
+// ────────────────────────────────────────────────────────────── responder
+
+/* Una respuesta dentro de un comentario. Admite lo mismo que un comentario (texto,
+   adjuntos y señalar una zona) porque a mitad de una conversacion hace falta poder
+   decir "me refiero a ESTO". Lo que NO hace es crear un marcador nuevo en la pagina:
+   la conversacion entera cuelga del comentario original y se lee dentro de el. */
+async function responder(comentarioId, request, env, cors) {
+  let form;
+  try { form = await request.formData(); }
+  catch { return json({ error: 'formulario ilegible' }, 400, cors); }
+
+  const padre = await env.DB.prepare('SELECT * FROM comentarios WHERE id = ?').bind(comentarioId).first();
+  if (!padre) return json({ error: 'ese comentario no existe' }, 404, cors);
+
+  const autorId = texto(form.get('autor_id'), 60);
+  if (!autorId) return json({ error: 'falta el identificador de autor' }, 400, cors);
+
+  const mensaje = texto(form.get('mensaje'), 8000);
+  const autor = texto(form.get('autor'), 120);
+  const senalados = parsear(form.get('senalados')) || [];
+
+  const adjuntos = [];
+  let total = 0;
+  for (const [clave, valor] of form.entries()) {
+    if (!clave.startsWith('adjunto') || typeof valor === 'string') continue;
+    total += valor.size;
+    if (total > MAX_TOTAL) return json({ error: 'adjuntos demasiado grandes' }, 413, cors);
+    adjuntos.push({
+      filename: nombreSeguro(valor.name || clave),
+      content: base64(await valor.arrayBuffer()),
+      contentType: valor.type || 'application/octet-stream'
+    });
+  }
+
+  if (!mensaje && !senalados.length && !adjuntos.length) {
+    return json({ error: 'respuesta vacía' }, 400, cors);
+  }
+
+  const id = crypto.randomUUID();
+  const ahora = new Date().toISOString();
+
+  await env.DB.prepare(
+    `INSERT INTO respuestas (id, comentario, site, mensaje, senalados, n_adjuntos, autor, autor_id, creado)
+     VALUES (?,?,?,?,?,?,?,?,?)`
+  ).bind(id, comentarioId, padre.site, mensaje, JSON.stringify(senalados), adjuntos.length, autor, autorId, ahora).run();
+
+  /* Se toca la fecha del comentario para que suba en la lista: una conversacion viva
+     tiene que verse antes que una parada. */
+  await env.DB.prepare('UPDATE comentarios SET actualizado = ? WHERE id = ?').bind(ahora, comentarioId).run();
+
+  try {
+    await avisar(env, {
+      tipo: 'respuesta',
+      site: padre.site, mensaje, autor,
+      contexto: JSON.parse(padre.contexto || '{}'),
+      senalados, adjuntos, id: comentarioId,
+      anterior: padre.mensaje
+    });
+  } catch (e) {
+    console.error('tack: respuesta guardada pero el aviso fallo', id, e && e.message);
+  }
+
+  return json({ ok: true, id }, 200, cors);
+}
+
 // ───────────────────────────────────────────────────────────────── listar
 
 async function listar(url, env, cors) {
@@ -130,8 +199,29 @@ async function listar(url, env, cors) {
      FROM comentarios WHERE site = ? ORDER BY creado ASC`
   ).bind(site).all();
 
+  /* Las respuestas se traen de una vez y se reparten en memoria: una consulta mas, no
+     una por comentario. */
+  const { results: resp } = await env.DB.prepare(
+    `SELECT id, comentario, mensaje, senalados, n_adjuntos, autor, autor_id, creado
+     FROM respuestas WHERE site = ? ORDER BY creado ASC`
+  ).bind(site).all();
+
+  const porComentario = {};
+  (resp || []).forEach(r => {
+    (porComentario[r.comentario] = porComentario[r.comentario] || []).push({
+      id: r.id,
+      mensaje: r.mensaje,
+      senalados: JSON.parse(r.senalados || '[]'),
+      nAdjuntos: r.n_adjuntos,
+      autor: r.autor,
+      autorId: r.autor_id,
+      creado: r.creado
+    });
+  });
+
   const comentarios = (results || []).map(c => ({
     id: c.id,
+    respuestas: porComentario[c.id] || [],
     url: c.url,
     ruta: c.ruta,
     titulo: c.titulo,
@@ -317,8 +407,8 @@ async function avisar(env, datos) {
     return;
   }
 
-  const prefijo = { nuevo: '💬', editado: '✏️', reabierto: '🔁', eliminado: '🗑️' }[datos.tipo] || '💬';
-  const mote = { nuevo: '', editado: '[editado] ', reabierto: '[reabierto] ', eliminado: '[ELIMINADO] ' }[datos.tipo] || '';
+  const prefijo = { nuevo: '💬', editado: '✏️', reabierto: '🔁', eliminado: '🗑️', respuesta: '↩️' }[datos.tipo] || '💬';
+  const mote = { nuevo: '', editado: '[editado] ', reabierto: '[reabierto] ', eliminado: '[ELIMINADO] ', respuesta: '[respuesta] ' }[datos.tipo] || '';
   const asunto = `${prefijo} Tack · ${datos.site}: ${mote}${resumir(datos.mensaje, datos.senalados)}`;
 
   const r = await fetch('https://api.resend.com/emails', {
@@ -426,7 +516,8 @@ function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], a
     nuevo: ['#0f172a', 'Nuevo comentario en'],
     editado: ['#78350f', 'Comentario EDITADO en'],
     reabierto: ['#7f1d1d', 'Comentario REABIERTO en'],
-    eliminado: ['#450a0a', 'Comentario ELIMINADO en']
+    eliminado: ['#450a0a', 'Comentario ELIMINADO en'],
+    respuesta: ['#1e293b', 'Respuesta en un comentario de']
   }[tipo] || ['#0f172a', 'Nuevo comentario en'];
 
   const bloqueAnterior = anterior != null ? `

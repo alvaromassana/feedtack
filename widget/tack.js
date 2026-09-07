@@ -118,6 +118,9 @@
       eliminarAvisoMio: 'Se borra y no se puede deshacer. Nos llegará una copia por correo, que será el único rastro.',
       estados: { abierto: 'Pendiente', resuelto: 'Resuelto', confirmado: 'Cerrado', reabierto: 'Reabierto' },
       retirar: 'Ya no aplica, cerrarlo',
+      respuestas: 'Conversación', sinRespuestas: 'Nadie ha respondido todavía.',
+      responder: 'Responder', escribeRespuesta: 'Escribe tu respuesta. Puedes señalar una zona o adjuntar una imagen.',
+      enviarRespuesta: 'Enviar respuesta', tu: 'tú',
       ahora: 'ahora', minutos: 'hace %s min', horas: 'hace %s h', dias: 'hace %s d',
       errVacio: 'Escribe un comentario, señala un elemento o adjunta algo.',
       errSinEndpoint: 'El widget no tiene endpoint configurado (data-endpoint).',
@@ -178,6 +181,9 @@
       eliminarAvisoMio: 'It is deleted and cannot be undone. We will get a copy by email, which will be the only trace left.',
       estados: { abierto: 'Open', resuelto: 'Resolved', confirmado: 'Closed', reabierto: 'Reopened' },
       retirar: 'No longer applies, close it',
+      respuestas: 'Thread', sinRespuestas: 'No replies yet.',
+      responder: 'Reply', escribeRespuesta: 'Write your reply. You can point at an area or attach an image.',
+      enviarRespuesta: 'Send reply', tu: 'you',
       ahora: 'just now', minutos: '%s min ago', horas: '%s h ago', dias: '%s d ago',
       errVacio: 'Write a comment, point at an element or attach something.',
       errSinEndpoint: 'The widget has no endpoint configured (data-endpoint).',
@@ -501,6 +507,17 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .enviar.atenuado:hover:not(:disabled) { background: #273549; color: #e2e8f0; filter: none; }
 .secundario { height: 42px; padding: 0 16px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; }
 .secundario:hover { background: #273549; }
+
+/* ---- hilo de respuestas ---- */
+.hilo { display: flex; flex-direction: column; gap: 9px; padding: 12px 0 2px; border-top: 1px solid #1e293b; }
+.hilo-tit { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
+.hilo-vacio { font-size: 12px; color: #64748b; font-style: italic; }
+.resp { background: #1e293b; border: 1px solid #263449; border-radius: 10px; padding: 9px 11px; }
+.resp--mia { background: #17233a; border-color: #2c3d5a; }
+.resp-quien { display: flex; align-items: baseline; gap: 7px; font-size: 11px; font-weight: 700; color: #cbd5e1; margin-bottom: 3px; }
+.resp-cuando { font-weight: 400; color: #64748b; }
+.resp-texto { font-size: 13px; line-height: 1.5; color: #e2e8f0; white-space: pre-wrap; }
+.resp-sen { margin-top: 5px; font: 500 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #94a3b8; background: #0f172a; border-radius: 6px; padding: 5px 7px; }
 
 .ir-sitio { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 12px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; color: #cbd5e1; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s; }
 .ir-sitio:hover { background: #273549; border-color: #475569; color: #f1f5f9; }
@@ -851,6 +868,11 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
      dos segundos; este se queda hasta que se desmarca, para poder leer el comentario
      viendo a que trozo de la pagina se refiere. */
   var resaltadoFijo = null;
+  /* Borrador de la respuesta que se esta escribiendo dentro de un comentario. Vive aparte
+     del borrador del comentario nuevo: son dos cosas a la vez y mezclarlas hace que al
+     responder se pierda lo que estabas escribiendo en la otra pestaña. */
+  var respBorrador = { mensaje: '', senalados: [], adjuntos: [] };
+  var respondiendoA = null;
   /* El aro. En su version FIJA no oscurece el resto de la pagina: si lo hiciera no se
      podria leer nada alrededor, que es justo para lo que sirve dejarlo puesto. */
   function pintarFoco(id, p, fijo) {
@@ -1053,7 +1075,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     cuerpo.appendChild(refs.senalado);
     pintarSenalado();
 
-    refs.btnSenalar = accion(ICONOS.diana, senalados.length ? txt('senalarOtro') : txt('senalar'), activarSenalar);
+    refs.btnSenalar = accion(ICONOS.diana, senalados.length ? txt('senalarOtro') : txt('senalar'), function () { activarSenalar('nuevo'); });
     refs.btnCaptura = accion(ICONOS.camara, txt('captura'), hacerCaptura);
     /* Nota de voz retirada de la interfaz el 7-sep-2026 a peticion de Alvaro ("de momento").
        El codigo de grabacion se queda entero: volver a ponerla es descomentar esta linea y
@@ -1269,6 +1291,112 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     irA(id);
   }
 
+  /* La conversacion dentro de un comentario. Es lo que convierte esto en un hilo y no en
+     un buzon: la respuesta admite lo mismo que el comentario (texto, señalar una zona,
+     adjuntar), pero NO crea marcador propio. Todo cuelga del comentario original. */
+  function hilo(c) {
+    var caja = el('div', { class: 'hilo' });
+    var lista = c.respuestas || [];
+
+    caja.appendChild(el('div', { class: 'hilo-tit', text: txt('respuestas') + (lista.length ? ' (' + lista.length + ')' : '') }));
+
+    if (!lista.length) {
+      caja.appendChild(el('div', { class: 'hilo-vacio', text: txt('sinRespuestas') }));
+    } else {
+      lista.forEach(function (r) {
+        var quien = r.autorId === AUTOR_ID ? txt('tu') : (r.autor || '—');
+        var m = el('div', { class: 'resp' + (r.autorId === AUTOR_ID ? ' resp--mia' : '') });
+        m.appendChild(el('div', { class: 'resp-quien' }, [
+          el('span', { text: quien }),
+          el('span', { class: 'resp-cuando', text: haceRato(r.creado) })
+        ]));
+        if (r.mensaje) m.appendChild(el('div', { class: 'resp-texto', text: r.mensaje }));
+        if ((r.senalados || []).length) {
+          m.appendChild(el('div', { class: 'resp-sen', text: r.senalados[0].etiqueta + (r.senalados[0].texto ? ' · ' + r.senalados[0].texto.slice(0, 34) : '') }));
+        }
+        if (r.nAdjuntos) m.appendChild(el('div', { class: 'resp-sen', text: r.nAdjuntos + txt('adjuntosCorreo') }));
+        caja.appendChild(m);
+      });
+    }
+
+    if (respondiendoA !== c.id) {
+      var abrir = el('button', { class: 'secundario', type: 'button', text: txt('responder') });
+      abrir.addEventListener('click', function () {
+        respondiendoA = c.id;
+        respBorrador = { mensaje: '', senalados: [], adjuntos: [] };
+        pintarPanel();
+      });
+      caja.appendChild(abrir);
+      return caja;
+    }
+
+    // ---- compositor de la respuesta
+    var ta = el('textarea', { placeholder: txt('escribeRespuesta'), 'aria-label': txt('responder') });
+    ta.value = respBorrador.mensaje;
+    ta.addEventListener('input', function () { respBorrador.mensaje = ta.value; });
+    caja.appendChild(ta);
+    refs.respTexto = ta;
+
+    if (respBorrador.senalados.length) {
+      var sen = el('div', { class: 'resp-sen' , text: respBorrador.senalados.map(function (x) { return x.etiqueta; }).join(', ') });
+      caja.appendChild(sen);
+    }
+    if (respBorrador.adjuntos.length) {
+      caja.appendChild(el('div', { class: 'resp-sen', text: respBorrador.adjuntos.length + txt('adjuntosCorreo') }));
+    }
+
+    var subirR = el('input', { type: 'file', accept: 'image/*', multiple: '' });
+    subirR.style.display = 'none';
+    subirR.addEventListener('change', function () {
+      [].forEach.call(subirR.files, function (fi) { respBorrador.adjuntos.push({ nombre: fi.name, blob: fi }); });
+      subirR.value = '';
+      pintarPanel();
+    });
+
+    var accs = el('div', { class: 'acciones acciones--2' });
+    var bSen = accion(ICONOS.diana, txt('senalar'), function () { activarSenalar('respuesta'); });
+    var bImg = accion(ICONOS.imagen, txt('adjuntar'), function () { subirR.click(); });
+    accs.appendChild(bSen); accs.appendChild(bImg);
+    caja.appendChild(accs);
+    caja.appendChild(subirR);
+
+    var env = el('button', { class: 'enviar', type: 'button', text: txt('enviarRespuesta') });
+    env.addEventListener('click', function () { enviarRespuesta(c, env); });
+    caja.appendChild(env);
+
+    return caja;
+  }
+
+  function enviarRespuesta(c, boton) {
+    var msg = (respBorrador.mensaje || '').trim();
+    if (!msg && !respBorrador.senalados.length && !respBorrador.adjuntos.length) {
+      return mostrarError(txt('errVacio'));
+    }
+    var autor = '';
+    try { autor = localStorage.getItem('tack_autor') || ''; } catch (e) {}
+    if (!autor) { return mostrarError(txt('errQuienEres')); }
+
+    boton.disabled = true; boton.textContent = txt('enviando');
+    var fd = new FormData();
+    fd.append('autor_id', AUTOR_ID);
+    fd.append('autor', autor);
+    fd.append('mensaje', msg);
+    fd.append('senalados', JSON.stringify(respBorrador.senalados));
+    respBorrador.adjuntos.forEach(function (a, i) { fd.append('adjunto' + i, a.blob, a.nombre); });
+
+    api('/api/comentarios/' + c.id + '/respuestas', { method: 'POST', body: fd })
+      .then(function () { return cargar(); })
+      .then(function () {
+        respondiendoA = null;
+        respBorrador = { mensaje: '', senalados: [], adjuntos: [] };
+        pintarPanel();
+      })
+      .catch(function (e) {
+        boton.disabled = false; boton.textContent = txt('enviarRespuesta');
+        mostrarError(String(e.message || e));
+      });
+  }
+
   function cabeceraDetalle() {
     var atras = el('button', { class: 'atras', type: 'button', 'aria-label': txt('volver'), html: ICONOS.flecha });
     atras.addEventListener('click', function () { soltarResaltado(); vista = 'lista'; pintarPanel(); });
@@ -1363,6 +1491,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       fijar.appendChild(el('span', { text: txt('resaltarFijo') }));
       cuerpo.appendChild(fijar);
     }
+
+    cuerpo.appendChild(hilo(c));
 
     cuerpo.appendChild(el('div', { class: 'linea' }));
     var datos = el('div', { class: 'datos' });
@@ -1538,7 +1668,13 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
   var marca, etiqueta, aviso, elegido = null;
 
-  function activarSenalar() {
+  /* A donde va lo que se señale: al comentario nuevo o a la respuesta que se esta
+     escribiendo dentro de un comentario. Sin esto, señalar desde una respuesta metia el
+     elemento en el borrador del comentario nuevo y te devolvia a la otra pestaña. */
+  var senalarDestino = 'nuevo';
+
+  function activarSenalar(destino) {
+    senalarDestino = destino === 'respuesta' ? 'respuesta' : 'nuevo';
     raiz.style.display = 'none';
     if (regleta) regleta.style.display = 'none';
     (capaPins || []).forEach(function (p) { p.style.display = 'none'; });
@@ -1659,7 +1795,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         texto: (t.innerText || t.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60),
         rect: { x: Math.round(r.left + scrollX), y: Math.round(r.top + scrollY), w: Math.round(r.width), h: Math.round(r.height) }
       };
-      if (!senalados.some(function (s) { return s.selector === nuevo.selector; })) senalados.push(nuevo);
+      var caja = senalarDestino === 'respuesta' ? respBorrador.senalados : senalados;
+      if (!caja.some(function (s) { return s.selector === nuevo.selector; })) caja.push(nuevo);
     }
     salirSenalar();
   }
@@ -1682,7 +1819,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     raiz.style.display = '';
     if (regleta) regleta.style.display = '';
     (capaPins || []).forEach(function (p) { p.style.display = ''; });
-    vista = 'nuevo';
+    vista = senalarDestino === 'respuesta' ? 'detalle' : 'nuevo';
     pintarPanel();
   }
 
@@ -1834,7 +1971,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     if (!refs.sugerencia) return;
 
     var si = el('button', { class: 'si', type: 'button', text: txt('invitaSi') });
-    si.addEventListener('click', activarSenalar);
+    si.addEventListener('click', function () { activarSenalar('nuevo'); });
 
     var no = el('button', { class: 'no', type: 'button', text: txt('invitaNo') });
     no.addEventListener('click', function () {
