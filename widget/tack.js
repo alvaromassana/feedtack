@@ -89,7 +89,7 @@
       invitaSi: 'Señalar dónde', invitaNo: 'Enviar sin señalar',
       nivelAyuda: 'para subir o bajar de elemento', nivelHermanos: 'para ir al de al lado',
       hechoPor: 'Hecho por ',
-      ocultarMarcas: 'Ocultar marcadores de feedback', resaltarFijo: 'Resaltar en la página mientras leo esto', sinSenalar: 'Este comentario no señalaba ningún elemento, así que no hay sitio al que ir.',
+      ocultarMarcas: 'Ocultar marcadores de feedback', resaltarFijo: 'Resaltar selección de feedback', sinSenalar: 'Este comentario no señalaba ningún elemento, así que no hay sitio al que ir.',
       errQuienEres: 'Pon tu nombre, para que sepamos de quién es cada comentario. Solo esta vez.',
       tuNombreObl: 'Tu nombre',
       recibido: 'Recibido, gracias',
@@ -148,7 +148,7 @@
       invitaSi: 'Point at it', invitaNo: 'Send without pointing',
       nivelAyuda: 'to go up or down a level', nivelHermanos: 'to move sideways',
       hechoPor: 'Made by ',
-      ocultarMarcas: 'Hide feedback markers', resaltarFijo: 'Keep it highlighted on the page while I read this', sinSenalar: 'This comment did not point at any element, so there is nowhere to go.',
+      ocultarMarcas: 'Hide feedback markers', resaltarFijo: 'Highlight the selected area', sinSenalar: 'This comment did not point at any element, so there is nowhere to go.',
       errQuienEres: 'Add your name, so we know who each comment is from. Just this once.',
       tuNombreObl: 'Your name',
       recibido: 'Got it, thanks',
@@ -1203,6 +1203,13 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     editando = false;
     vista = 'detalle';
     abierto = true;
+    /* El resaltado viene puesto de serie: al abrir un feedback lo primero que quieres es
+       ver a que trozo de pagina se refiere, y que se fuera a los dos segundos obligaba a
+       marcarlo a mano cada vez. Solo si señalo algo Y esta en esta pagina; si no, la
+       casilla ni se pinta y dejar el estado puesto seria mentira.
+       Se fija ANTES de pintar el panel, que es quien lee la casilla. */
+    var c = comentarios.filter(function (x) { return x.id === id; })[0];
+    resaltadoFijo = (c && deEstaPagina(c) && (c.senalados || []).length) ? id : null;
     pintarPanel();
     irA(id);
   }
