@@ -449,6 +449,15 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .enviar.atenuado:hover:not(:disabled) { background: #273549; color: #e2e8f0; filter: none; }
 .secundario { height: 42px; padding: 0 16px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; }
 .secundario:hover { background: #273549; }
+
+/* Aviso cuando pedimos el nombre por primera vez. */
+input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px rgba(248,113,113,.18) !important; }
+
+/* Firma. Va al pie, en gris y pequeña: quien abre esto es un cliente mirando SU
+   web, y la firma no debe competir con el comentario que va a escribir. */
+.firma { padding: 10px 16px 13px; margin-top: 2px; text-align: center; font-size: 11px; line-height: 1.4; color: #64748b; border-top: 1px solid #1e293b; }
+.firma a { color: #94a3b8; text-decoration: none; font-weight: 600; }
+.firma a:hover { color: var(--acento); text-decoration: underline; }
 .pie { display: flex; align-items: center; gap: 8px; }
 .nota { font-size: 11px; color: #64748b; text-align: center; }
 .error { font-size: 12px; color: #fca5a5; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); border-radius: 8px; padding: 8px 10px; }
@@ -518,11 +527,6 @@ textarea::placeholder, input::placeholder { color: #64748b; }
   // Lo que va en el documento real (fuera del shadow)
   var CSS_DOC = `
 .tk-senalando, .tk-senalando * { cursor: crosshair !important; }
-input[type=text].pide { border-color: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,.18); }
-.firma { padding: 9px 16px 12px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #1e293b; }
-.firma a { color: #94a3b8; text-decoration: none; font-weight: 600; }
-.firma a:hover { color: var(--acento); text-decoration: underline; }
-
 .tk-marca {
   position: absolute; pointer-events: none; z-index: 2147482000;
   border: 2px solid var(--tk-acento, #4f46e5);
