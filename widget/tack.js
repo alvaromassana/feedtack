@@ -110,7 +110,7 @@
       avisoEdicion: 'Te avisamos: nos llega el aviso de que lo has cambiado.',
       resolver: 'Marcar como resuelto', hecha: 'Marcar como hecha',
       confirmar: 'Está bien así', reabrir2: 'No, sigue mal', reabrir: 'Reabrir',
-      irPagina: 'Ir a esa página', unMomento: 'Un momento…',
+      irPagina: 'Ir a esa página', irAlSitio: 'Ir al sitio', irAlSitioOtra: 'Ir al sitio (otra página)', unMomento: 'Un momento…',
       notaResuelto: 'Lo hemos dado por arreglado. Dinos si te encaja o si sigue sin estar bien.',
       eliminar: 'Eliminar comentario', eliminando: 'Eliminando…',
       eliminarSi: 'Sí, eliminar', eliminarNo: 'No',
@@ -169,7 +169,7 @@
       avisoEdicion: 'Heads up: we get notified that you changed it.',
       resolver: 'Mark as resolved', hecha: 'Mark as done',
       confirmar: 'Looks good', reabrir2: 'No, still wrong', reabrir: 'Reopen',
-      irPagina: 'Go to that page', unMomento: 'One moment…',
+      irPagina: 'Go to that page', irAlSitio: 'Go to it', irAlSitioOtra: 'Go to it (another page)', unMomento: 'One moment…',
       notaResuelto: 'We think it is fixed. Tell us if it works for you or if it is still wrong.',
       eliminar: 'Delete comment', eliminando: 'Deleting…',
       eliminarSi: 'Yes, delete', eliminarNo: 'No',
@@ -460,6 +460,10 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .enviar.atenuado:hover:not(:disabled) { background: #273549; color: #e2e8f0; filter: none; }
 .secundario { height: 42px; padding: 0 16px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; }
 .secundario:hover { background: #273549; }
+
+.ir-sitio { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 12px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; color: #cbd5e1; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s; }
+.ir-sitio:hover { background: #273549; border-color: #475569; color: #f1f5f9; }
+.ir-sitio svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
 
 .ocultar { display: flex; align-items: center; gap: 8px; margin: 0 16px 4px; padding: 9px 11px; border: 1px solid #1e293b; border-radius: 8px; cursor: pointer; color: #94a3b8; font-size: 12px; user-select: none; }
 .ocultar:hover { border-color: #334155; color: #cbd5e1; }
@@ -837,7 +841,13 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     var c = comentarios.filter(function (x) { return x.id === id; })[0];
     if (!c) return;
 
-    if (!deEstaPagina(c)) { location.href = c.url; return; }
+    /* Otra pagina: se navega llevandose el id en el ancla, para que al cargar la nueva
+       se abra ese comentario y se baje hasta su sitio. Sin esto te dejaba en lo alto de
+       la pagina y tenias que buscarlo tu, que es justo lo que esto viene a evitar. */
+    if (!deEstaPagina(c)) {
+      location.href = c.url.split('#')[0] + '#tack=' + c.id;
+      return;
+    }
 
     var p = c.senalados && c.senalados.length ? posicionDe(c.senalados[0]) : null;
     /* Sin elemento señalado no hay a donde llevarle. Antes esto era un `return` mudo:
@@ -1258,6 +1268,18 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       cuerpo.appendChild(caja);
     }
 
+    /* Volver al sitio del feedback en cualquier momento. Al abrir el detalle ya te lleva,
+       pero mientras lo lees te mueves por la pagina y hay que poder regresar. Si el
+       feedback es de OTRA pagina, esto navega hasta ella. */
+    if ((c.senalados || []).length) {
+      var deAqui = deEstaPagina(c);
+      var irBtn = el('button', { class: 'ir-sitio', type: 'button' });
+      irBtn.innerHTML = ICONOS.diana;
+      irBtn.appendChild(el('span', { text: deAqui ? txt('irAlSitio') : txt('irAlSitioOtra') }));
+      irBtn.addEventListener('click', function () { irA(c.id); });
+      cuerpo.appendChild(irBtn);
+    }
+
     /* Mantener el area resaltada mientras se lee el comentario. Solo tiene sentido si
        señalo algo y si ese algo esta en la pagina que estas viendo. */
     if (deEstaPagina(c) && (c.senalados || []).length) {
@@ -1329,7 +1351,9 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       botones.push(reabrir);
     }
 
-    if (!deEstaPagina(c)) {
+    /* El boton de "ir a esa pagina" solo se queda para los comentarios SIN elemento
+       señalado: con elemento ya lo cubre el de arriba, que ademas resalta el sitio. */
+    if (!deEstaPagina(c) && !(c.senalados || []).length) {
       var ir = el('button', { class: 'secundario', type: 'button', text: txt('irPagina') });
       ir.addEventListener('click', function () { location.href = c.url; });
       botones.push(ir);
@@ -1787,10 +1811,28 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
   // ------------------------------------------------------------------- arranque
 
+  /* ¿Venimos de otra pagina siguiendo un feedback? El id viaja en el ancla. */
+  function idDelAncla() {
+    try {
+      var m = /(?:^|#|&)tack=([\w-]{6,})/.exec(location.hash || '');
+      return m ? m[1] : null;
+    } catch (e) { return null; }
+  }
+
   function arrancar() {
     document.body.appendChild(host);
     pintarBurbuja();
-    cargar();
+    cargar().then(function () {
+      var id = idDelAncla();
+      if (!id) return;
+      if (!comentarios.some(function (c) { return c.id === id; })) return;
+      /* Se limpia el ancla para que al recargar o compartir la direccion no vuelva a
+         abrirse solo, y para no dejar basura en la barra. */
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+      /* Un respiro antes de medir: al llegar de otra pagina las imagenes perezosas
+         todavia estan colocandose y el sitio señalado se mueve. */
+      setTimeout(function () { abrirDetalle(id); }, 450);
+    }).catch(function () {});
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
