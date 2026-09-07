@@ -56,8 +56,11 @@ in your own Cloudflare account.
 - **Who asked for what.** Each reviewer gets a personal link (`?tack_yo=Name`) and every
   comment from that browser is signed. If nobody used a link, the name is asked once and
   remembered.
-- **A workflow, not an inbox**: `open → resolved → confirmed | reopened`. Your team can also
-  close their own notes in one step, for reminders and internal to-dos.
+- **Every comment is a thread.** Anyone can reply, as many times as needed, and a reply can
+  point at an area or attach an image too. The conversation stays next to the thing it's about.
+- **A workflow, not an inbox**: `open → resolved → confirmed | reopened`. Whoever wrote a
+  comment can close it themselves, and your team can close their own notes in one step, for
+  reminders and internal to-dos.
 - **Nudges the client to point**, once, if they try to send without pointing at anything.
   What isn't pointed at can't get a pin, so it floats loose on the page.
 - **Spanish and English**, picked up from the page's `lang` attribute or forced per site.

@@ -6,6 +6,11 @@ All notable changes to Tack Comment are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- Every comment is a thread: anyone can reply, as many times as needed, pointing at an area
+  or attaching an image. New `respuestas` table in D1 (run `esquema.sql` again to create it).
+- Whoever wrote a comment can close it, without being on the team.
+
 ## [0.1.0] - 2026-09-08
 
 First tagged release. Everything below was built between July 27 and September 7, 2026,
