@@ -214,15 +214,27 @@ async function cambiarEstado(id, request, env, cors) {
 
   const admin = esAdmin(cuerpo.clave, env);
 
+  const suyo = cuerpo.autor_id && String(cuerpo.autor_id) === String(fila.autor_id);
+
   /* El equipo (con clave) manda: puede resolver, y puede cerrar directamente lo suyo
      o una nota interna, sin esperar a que nadie confirme.
-     Quien no tiene clave solo puede confirmar o reabrir algo que ya hemos resuelto. */
+
+     Sin clave hay dos cosas permitidas:
+     - confirmar o reabrir algo que YA hemos resuelto (es su palabra la que cierra), y
+     - CERRAR lo suyo cuando sigue abierto: se equivoco, ya no aplica, o lo resolvio por
+       otra via. Sin esto, quien escribe se queda atrapado con un comentario que ya no
+       quiere y su unica salida es borrarlo, que se lleva el rastro por delante.
+
+     Lo que NO puede nadie sin clave es marcar algo como RESUELTO: eso es afirmar que el
+     trabajo esta hecho, y solo puede decirlo quien lo ha hecho. */
   if (!admin) {
     if (nuevo === 'resuelto' || nuevo === 'abierto') {
       return json({ error: 'hace falta la clave de administración' }, 403, cors);
     }
-    if (fila.estado !== 'resuelto') {
-      return json({ error: 'solo se puede confirmar o reabrir algo ya resuelto' }, 409, cors);
+    const cerrandoLoSuyo = suyo && nuevo === 'confirmado' &&
+      (fila.estado === 'abierto' || fila.estado === 'reabierto');
+    if (fila.estado !== 'resuelto' && !cerrandoLoSuyo) {
+      return json({ error: 'solo se puede confirmar o reabrir algo ya resuelto, o cerrar lo tuyo' }, 409, cors);
     }
   }
 

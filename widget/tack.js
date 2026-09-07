@@ -117,6 +117,7 @@
       eliminarAviso: 'Se borra para todos y no se puede deshacer. Te llegará una copia por correo, que será el único rastro.',
       eliminarAvisoMio: 'Se borra y no se puede deshacer. Nos llegará una copia por correo, que será el único rastro.',
       estados: { abierto: 'Pendiente', resuelto: 'Resuelto', confirmado: 'Cerrado', reabierto: 'Reabierto' },
+      retirar: 'Ya no aplica, cerrarlo',
       ahora: 'ahora', minutos: 'hace %s min', horas: 'hace %s h', dias: 'hace %s d',
       errVacio: 'Escribe un comentario, señala un elemento o adjunta algo.',
       errSinEndpoint: 'El widget no tiene endpoint configurado (data-endpoint).',
@@ -176,6 +177,7 @@
       eliminarAviso: 'It is deleted for everyone and cannot be undone. You will get a copy by email, which will be the only trace left.',
       eliminarAvisoMio: 'It is deleted and cannot be undone. We will get a copy by email, which will be the only trace left.',
       estados: { abierto: 'Open', resuelto: 'Resolved', confirmado: 'Closed', reabierto: 'Reopened' },
+      retirar: 'No longer applies, close it',
       ahora: 'just now', minutos: '%s min ago', horas: '%s h ago', dias: '%s d ago',
       errVacio: 'Write a comment, point at an element or attach something.',
       errSinEndpoint: 'The widget has no endpoint configured (data-endpoint).',
@@ -1396,6 +1398,17 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       }
     }
 
+    /* El autor puede CERRAR lo suyo aunque no sea del equipo: se equivoco, ya no aplica,
+       o lo resolvio por otra via. Ojo, no dice "resuelto" sino "cerrado": resolver es
+       afirmar que el trabajo esta hecho, y eso solo puede decirlo quien lo ha hecho. Asi
+       nadie da por hecho algo que no ha tocado, y aun asi quien escribe no se queda
+       atrapado con un comentario que ya no quiere. */
+    if (mio && !esAdmin() && (c.estado === 'abierto' || c.estado === 'reabierto')) {
+      var quitar = el('button', { class: 'secundario', type: 'button', text: txt('retirar') });
+      quitar.addEventListener('click', function () { cambiar(c, 'confirmado', quitar); });
+      botones.push(quitar);
+    }
+
     // El autor decide sobre lo suyo cuando se lo hemos resuelto
     if (c.estado === 'resuelto' && (mio || !esAdmin())) {
       var ok = el('button', { class: 'enviar', type: 'button', text: txt('confirmar') });
@@ -1510,7 +1523,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     api('/api/comentarios/' + c.id + '/estado', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ estado: estado, clave: CLAVE_ADMIN })
+      body: JSON.stringify({ estado: estado, clave: CLAVE_ADMIN, autor_id: AUTOR_ID })
     }).then(function () {
       return cargar();
     }).then(function () {
