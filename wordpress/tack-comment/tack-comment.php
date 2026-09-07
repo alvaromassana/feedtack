@@ -30,7 +30,7 @@ function tack_por_defecto() {
 		'script'      => 'https://cdn.jsdelivr.net/gh/alvaromassana/tack-comment@main/widget/tack.js',
 		'color'       => '#4f46e5',
 		'label'       => 'Comentar',
-		'posicion'    => 'bottom-right',
+		'posicion'    => 'borde-derecho',
 		'idioma'      => '',   // Websalia 2026-09-07: vacio = lo decide el lang de la pagina
 		'en_produccion' => 0,
 	);
@@ -165,7 +165,7 @@ function tack_sanear( $entrada ) {
 		$salida['label'] = $d['label'];
 	}
 
-	$posiciones = array( 'bottom-right', 'bottom-left', 'top-right' );
+	$posiciones = array( 'borde-derecho', 'bottom-right', 'bottom-left', 'top-right' );
 	$salida['posicion'] = ( isset( $entrada['posicion'] ) && in_array( $entrada['posicion'], $posiciones, true ) )
 		? $entrada['posicion']
 		: $d['posicion'];
@@ -266,6 +266,7 @@ function tack_pagina_ajustes() {
 						<select id="tack_posicion" name="<?php echo esc_attr( TACK_OPCION ); ?>[posicion]">
 							<?php
 							$opciones = array(
+								'borde-derecho' => 'Pestaña pegada al borde derecho (discreta)',
 								'bottom-right' => 'Abajo a la derecha',
 								'bottom-left'  => 'Abajo a la izquierda',
 								'top-right'    => 'Arriba a la derecha',

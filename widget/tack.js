@@ -28,7 +28,7 @@
     api: base || '',
     color: script.getAttribute('data-color') || '#4f46e5',
     label: script.getAttribute('data-label') || 'Comentar',
-    position: script.getAttribute('data-position') || 'bottom-right'
+    position: script.getAttribute('data-position') || 'borde-derecho'
   };
 
   var MAX_FILE_BYTES = 8 * 1024 * 1024;
@@ -304,6 +304,45 @@
 .tk.bottom-right { right: 20px; bottom: 20px; }
 .tk.bottom-left  { left: 20px;  bottom: 20px; }
 .tk.top-right    { right: 20px; top: 20px; }
+/* Pegada al borde: sin separacion, para que se lea como parte del navegador y no como
+   un boton flotante mas. La esquina de abajo a la derecha esta muy disputada (WhatsApp,
+   chats, cookies) y esto se aparta de ahi sin dejar de estar a mano. */
+.tk.borde-derecho { right: 0; bottom: 26px; }
+/* El panel si se separa del borde: pegado a sangre se vería cortado. La pestaña es lo
+   unico que va a ras. */
+.tk.borde-derecho .panel { margin: 0 16px 0 0; }
+
+/* ---- pestaña discreta pegada al borde ---- */
+.pestana {
+  display: flex; align-items: center; gap: 0; height: 44px; padding: 0 6px 0 9px;
+  background: rgba(15,23,42,.82); color: #fff; border: 0;
+  border-radius: 10px 0 0 10px; cursor: pointer; font-family: inherit;
+  box-shadow: 0 4px 18px rgba(2,6,23,.22);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  transition: padding .22s cubic-bezier(.23,1,.32,1), background .22s, box-shadow .22s;
+}
+.pestana svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; transition: transform .22s cubic-bezier(.23,1,.32,1); }
+/* El texto existe siempre (para quien lee con lector de pantalla) y solo se despliega al
+   acercar el raton: en reposo la pestaña es una flecha y nada mas. */
+.pestana .etiq {
+  max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0;
+  font-size: 13px; font-weight: 600; letter-spacing: .01em;
+  transition: max-width .26s cubic-bezier(.23,1,.32,1), opacity .18s, margin .26s;
+}
+.pestana:hover, .pestana:focus-visible {
+  background: #0f172a; padding-left: 13px;
+  box-shadow: 0 6px 26px rgba(2,6,23,.34);
+}
+.pestana:hover .etiq, .pestana:focus-visible .etiq { max-width: 130px; opacity: 1; margin: 0 7px 0 8px; }
+.pestana:hover svg, .pestana:focus-visible svg { transform: translateX(-2px); }
+.pestana:focus-visible { outline: 2px solid var(--acento); outline-offset: 2px; }
+.pestana:active { background: #1e293b; }
+.pestana .cuenta {
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px; background: var(--acento);
+  color: #fff; font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center;
+  margin-left: 6px; flex: none;
+}
+@media (max-width: 600px) { .pestana { height: 40px; } }
 
 /* ---- burbuja ---- */
 .burbuja {
@@ -890,11 +929,25 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     raiz.textContent = '';
     abierto = false;
     var n = pendientes().length;
-    var b = el('button', { class: 'burbuja', type: 'button', 'aria-label': txt('titulo') }, [
-      el('span', { class: 'punto' }),
-      el('span', { text: CFG.label })
-    ]);
-    if (n) b.appendChild(el('span', { class: 'cuenta', text: String(n) }));
+    var b;
+
+    if (CFG.position === 'borde-derecho') {
+      /* En reposo es una flecha pegada al borde y nada mas: ni la palabra "Comentar" ni
+         una pastilla grande compitiendo con los botones flotantes de la web (WhatsApp,
+         chat, cookies), que viven justo en esa esquina. La etiqueta se despliega al
+         acercar el raton, asi que sigue siendo evidente para que sirve. */
+      b = el('button', { class: 'pestana', type: 'button', 'aria-label': CFG.label });
+      b.innerHTML = ICONOS.flecha;
+      b.appendChild(el('span', { class: 'etiq', text: CFG.label }));
+      if (n) b.appendChild(el('span', { class: 'cuenta', text: String(n) }));
+    } else {
+      b = el('button', { class: 'burbuja', type: 'button', 'aria-label': txt('titulo') }, [
+        el('span', { class: 'punto' }),
+        el('span', { text: CFG.label })
+      ]);
+      if (n) b.appendChild(el('span', { class: 'cuenta', text: String(n) }));
+    }
+
     b.addEventListener('click', function () {
       vista = comentarios.length ? 'lista' : 'nuevo';
       pintarPanel();
