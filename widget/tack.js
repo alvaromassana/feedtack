@@ -45,6 +45,17 @@
     } catch (e) { return ''; }
   })();
 
+  // El nombre puede llegar por la URL (?tack_yo=Sol) y se queda en este navegador.
+  // Existe porque el campo "Tu nombre" es opcional y en la práctica se salta: con varias
+  // personas revisando la misma web, saber quién pidió cada cambio es justo lo que hace
+  // falta. Así cada una entra por su enlace y firma sin escribir nada.
+  (function () {
+    try {
+      var y = new URLSearchParams(location.search).get('tack_yo');
+      if (y) localStorage.setItem('tack_autor', y.slice(0, 60));
+    } catch (e) {}
+  })();
+
   // Identidad anónima por navegador: es lo que permite editar lo propio.
   var AUTOR_ID = (function () {
     try {
