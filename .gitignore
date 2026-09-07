@@ -15,3 +15,11 @@ docs/README-interno.md
 propuestas/
 .wrangler/
 !docs/img/
+desplegar.sh
+
+# proyecto de video interno (HyperFrames): pesado y con notas internas, NO va al repo publico
+videos/
+
+# clips y fotogramas del proyecto de video interno
+qa/fotogramas/
+qa/grabar-clips.mjs
