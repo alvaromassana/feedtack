@@ -1,0 +1,286 @@
+{
+ "cliente": "Tack Comment (demo Vallmar)",
+ "titulo": "Entrar y comentar",
+ "salida": "tack-00-entrar.mp4",
+ "almacenLocal": {
+  "tack_autor": "Núria Vallmar",
+  "tack_autor_id": "yo-nuria"
+ },
+ "simularApi": {
+  "**/api/comentarios**": {
+   "comentarios": []
+  },
+  "**/api/feedback**": {
+   "ok": true,
+   "id": "demo"
+  }
+ },
+ "pasos": [
+  {
+   "id": "portada",
+   "cartel": {
+    "titulo": "Entrar y comentar",
+    "lineas": [
+     "El primero de los dos vídeos. Dura un minuto."
+    ]
+   },
+   "texto": "En este vídeo vas a ver cómo comentar la web."
+  },
+  {
+   "id": "enlace",
+   "cartel": {
+    "titulo": "Tu enlace personal",
+    "lineas": [
+     "Te lo hemos mandado por correo. Entra siempre por ahí."
+    ],
+    "datos": [
+     "vallmar.com/?tack_yo=Nuria"
+    ]
+   },
+   "texto": "Te hemos mandado un enlace con tu nombre dentro. Entra siempre por ahí y tus comentarios salen firmados por ti."
+  },
+  {
+   "id": "pestana",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "foco": "#tack-host .pestana",
+   "etiqueta": "La pestaña Comentar",
+   "texto": "En el lado derecho de la web tienes una pestaña que pone Comentar, en todas las páginas."
+  },
+  {
+   "id": "panel",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana"
+   ],
+   "foco": "#tack-host .panel",
+   "etiqueta": "El panel",
+   "texto": "Se abre este panel, con tu nombre ya puesto."
+  },
+  {
+   "id": "boton-senalar",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana"
+   ],
+   "foco": "#tack-host .acciones--2 button:nth-child(1)",
+   "etiqueta": "Señalar elemento",
+   "texto": "Lo primero es señalar de qué hablas."
+  },
+  {
+   "id": "senalar-titular",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+    },
+    {
+     "esperar": 900
+    },
+    {
+     "hover": ".hero h1"
+    }
+   ],
+   "foco": ".hero h1",
+   "etiqueta": "Se marca lo que hay bajo el ratón",
+   "texto": "Moviendo el ratón se te va marcando lo que hay debajo. Aquí, el titular."
+  },
+  {
+   "id": "flecha-arriba",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+    },
+    {
+     "esperar": 900
+    },
+    {
+     "hover": ".hero h1"
+    },
+    {
+     "tecla": "ArrowUp"
+    }
+   ],
+   "foco": ".hero",
+   "etiqueta": "La flecha de arriba coge el bloque entero",
+   "texto": "La flecha de arriba coge el bloque entero y la de abajo vuelve a afinar."
+  },
+  {
+   "id": "senalado",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+    },
+    {
+     "esperar": 900
+    },
+    ".hero h1",
+    {
+     "esperar": 900
+    }
+   ],
+   "foco": "#tack-host .senalado",
+   "etiqueta": "Queda apuntado en el panel",
+   "texto": "Haz clic y se queda apuntado en el panel."
+  },
+  {
+   "id": "escrito",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+    },
+    {
+     "esperar": 900
+    },
+    ".hero h1",
+    {
+     "esperar": 900
+    },
+    {
+     "js": "var t=document.querySelector('#tack-host').shadowRoot.querySelector('textarea');t.setAttribute('spellcheck','false')"
+    },
+    {
+     "escribir": [
+      "#tack-host .cuerpo textarea",
+      "El titular tendría que hablar de rehabilitación, que es lo que más nos piden."
+     ]
+    }
+   ],
+   "foco": "#tack-host .cuerpo textarea",
+   "etiqueta": "Lo que cambiarías, en tus palabras",
+   "texto": "Escribe qué cambiarías, con tus palabras. No hace falta que nos digas cómo se hace."
+  },
+  {
+   "id": "captura-adjuntar",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana"
+   ],
+   "foco": "#tack-host .cuerpo > .acc",
+   "etiqueta": "Captura y Adjuntar",
+   "texto": "Captura hace una foto de la pantalla tal como la ves. Adjuntar sube una que ya tengas."
+  },
+  {
+   "id": "enviar",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+    },
+    {
+     "esperar": 900
+    },
+    ".hero h1",
+    {
+     "esperar": 900
+    },
+    {
+     "escribir": [
+      "#tack-host .cuerpo textarea",
+      "El titular tendría que hablar de rehabilitación, que es lo que más nos piden."
+     ]
+    }
+   ],
+   "foco": "#tack-host .enviar",
+   "etiqueta": "Enviar comentario",
+   "texto": "Y Enviar comentario."
+  },
+  {
+   "id": "recibido",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 5000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+    },
+    {
+     "esperar": 900
+    },
+    ".hero h1",
+    {
+     "esperar": 900
+    },
+    {
+     "escribir": [
+      "#tack-host .cuerpo textarea",
+      "El titular tendría que hablar de rehabilitación, que es lo que más nos piden."
+     ]
+    },
+    "#tack-host .enviar"
+   ],
+   "esperaAccion": 500,
+   "foco": "#tack-host .hecho",
+   "etiqueta": "Recibido, gracias",
+   "texto": "Nos llega con la página y el sitio exacto, así que no tienes que explicarnos dónde estabas."
+  },
+  {
+   "id": "chincheta",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "simularApi": {
+    "**/api/comentarios**": {
+     "comentarios": [
+      {
+       "id": "c1",
+       "url": "https://tack-comment.pages.dev/",
+       "ruta": "/",
+       "titulo": "Vallmar Arquitectura",
+       "mensaje": "El titular tendría que hablar de rehabilitación, que es lo que más nos piden.",
+       "senalados": [
+        {
+         "selector": ".hero h1",
+         "texto": "Arquitectura que envejece bien.",
+         "rect": {
+          "x": 0,
+          "y": 0,
+          "w": 0,
+          "h": 0
+         }
+        }
+       ],
+       "nAdjuntos": 0,
+       "autor": "Núria Vallmar",
+       "autorId": "yo-nuria",
+       "estado": "abierto",
+       "creado": "2026-09-08T08:00:00.000Z",
+       "actualizado": "2026-09-08T08:00:00.000Z",
+       "editado": false,
+       "respuestas": []
+      }
+     ]
+    }
+   },
+   "foco": ".hero h1",
+   "etiqueta": "Tu comentario queda marcado en su sitio",
+   "texto": "Queda marcado ahí mismo, con un número. En el siguiente vídeo, qué puedes hacer con lo que ya has dicho."
+  }
+ ]
+}

@@ -17,9 +17,18 @@ propuestas/
 !docs/img/
 desplegar.sh
 
-# proyecto de video interno (HyperFrames): pesado y con notas internas, NO va al repo publico
-videos/
+# proyecto de video interno (HyperFrames): pesado y con notas internas, NO va al repo publico.
+# 🔴 Se excluye con /* y no con /, porque git no desciende en un directorio excluido entero
+# y entonces las negaciones de abajo no valdrian para nada.
+videos/*
 
 # clips y fotogramas del proyecto de video interno
 qa/fotogramas/
 qa/grabar-clips.mjs
+
+# Videotutoriales: los GUIONES sí se versionan (son la fuente, no llevan nada privado:
+# cliente ficticio, demo pública y selectores del propio widget). Lo pesado y lo generado, no.
+!videos/tutorial/
+videos/tutorial/*/hf/
+videos/tutorial/*/capturas/
+videos/tutorial/*/*.mp4

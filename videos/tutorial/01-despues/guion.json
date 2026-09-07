@@ -1,0 +1,244 @@
+{
+ "cliente": "Tack Comment (demo Vallmar)",
+ "titulo": "Lo que pasa después",
+ "salida": "tack-01-despues.mp4",
+ "almacenLocal": {
+  "tack_autor": "Núria Vallmar",
+  "tack_autor_id": "yo-nuria"
+ },
+ "simularApi": {
+  "**/api/comentarios**": {
+   "comentarios": [
+    {
+     "id": "c1",
+     "url": "https://tack-comment.pages.dev/",
+     "ruta": "/",
+     "titulo": "Vallmar Arquitectura",
+     "mensaje": "El titular tendría que hablar de rehabilitación, que es lo que más nos piden.",
+     "senalados": [
+      {
+       "selector": ".hero h1",
+       "texto": "Arquitectura que envejece bien.",
+       "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+       }
+      }
+     ],
+     "nAdjuntos": 0,
+     "autor": "Núria Vallmar",
+     "autorId": "yo-nuria",
+     "estado": "abierto",
+     "creado": "2026-09-08T08:00:00.000Z",
+     "actualizado": "2026-09-08T08:00:00.000Z",
+     "editado": false,
+     "respuestas": []
+    },
+    {
+     "id": "c2",
+     "url": "https://tack-comment.pages.dev/",
+     "ruta": "/",
+     "titulo": "Vallmar Arquitectura",
+     "mensaje": "Esta foto se ve rara en el móvil, se corta por arriba. Os adjunto captura.",
+     "senalados": [
+      {
+       "selector": ".banda",
+       "texto": "Imagen de portada",
+       "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+       }
+      }
+     ],
+     "nAdjuntos": 1,
+     "autor": "Núria Vallmar",
+     "autorId": "yo-nuria",
+     "estado": "resuelto",
+     "creado": "2026-09-05T09:00:00.000Z",
+     "actualizado": "2026-09-07T17:00:00.000Z",
+     "editado": false,
+     "respuestas": []
+    }
+   ]
+  },
+  "**/api/feedback**": {
+   "ok": true,
+   "id": "demo"
+  }
+ },
+ "pasos": [
+  {
+   "id": "portada",
+   "cartel": {
+    "titulo": "Lo que pasa después",
+    "lineas": [
+     "El segundo vídeo. Qué puedes hacer con lo que ya has dicho."
+    ]
+   },
+   "texto": "En este vídeo vas a ver qué puedes hacer con los comentarios que ya has dejado."
+  },
+  {
+   "id": "historial",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana"
+   ],
+   "foco": "#tack-host .cuerpo",
+   "etiqueta": "Historial",
+   "texto": "En Historial están todos. Arriba puedes filtrar por pendientes, resueltos o todos."
+  },
+  {
+   "id": "abrir",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "esperar": 1200
+    },
+    "#tack-host .tarjeta"
+   ],
+   "foco": "#tack-host .senalado",
+   "etiqueta": "Al abrirlo se resalta la zona",
+   "texto": "Al abrir uno se te resalta la zona de la que hablabas, así que no tienes que acordarte. Si era de otra página, Ir al sitio te lleva."
+  },
+  {
+   "id": "editar",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "esperar": 1200
+    },
+    "#tack-host .tarjeta",
+    {
+     "esperar": 1000
+    },
+    "#tack-host .pie .secundario"
+   ],
+   "foco": "#tack-host .cuerpo.detalle",
+   "etiqueta": "Editar lo tuyo",
+   "texto": "Si te has explicado mal, Editar te deja cambiarlo. Nos llega el aviso, así que no hace falta que nos escribas."
+  },
+  {
+   "id": "responder",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "esperar": 1200
+    },
+    "#tack-host .tarjeta",
+    {
+     "esperar": 1000
+    },
+    {
+     "escribir": [
+      "#tack-host .resp-ta",
+      "Con lo de rehabilitación es suficiente, gracias."
+     ]
+    }
+   ],
+   "foco": "#tack-host .hilo",
+   "etiqueta": "La conversación",
+   "texto": "Cada comentario es una conversación. Puedes responder las veces que haga falta, y en la respuesta también señalar una zona o adjuntar una imagen."
+  },
+  {
+   "id": "ocultar",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana"
+   ],
+   "foco": "#tack-host .ocultar",
+   "etiqueta": "Ocultar marcadores",
+   "texto": "Si las chinchetas te tapan lo que quieres mirar, con Ocultar marcadores desaparecen, y vuelven al desmarcarlo."
+  },
+  {
+   "id": "resuelto",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "esperar": 1200
+    },
+    "#tack-host .tarjeta",
+    {
+     "esperar": 1000
+    }
+   ],
+   "foco": "#tack-host .pie .con-check",
+   "etiqueta": "Resuelto",
+   "texto": "Y si ya no hace falta, puedes darlo por Resuelto. Es tuyo, así que lo cierras tú."
+  },
+  {
+   "id": "eliminar",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "esperar": 1200
+    },
+    "#tack-host .tarjeta",
+    {
+     "esperar": 1000
+    },
+    "#tack-host .borrar",
+    {
+     "esperar": 1200
+    }
+   ],
+   "foco": "#tack-host .opciones",
+   "etiqueta": "Eliminar, con aviso",
+   "texto": "Eliminar lo borra para todos y no se puede deshacer, así que antes te lo pregunta."
+  },
+  {
+   "id": "confirmar",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "acciones": [
+    "#tack-host .pestana",
+    {
+     "esperar": 1200
+    },
+    "#tack-host .filtros button:nth-child(2)",
+    {
+     "esperar": 1000
+    },
+    "#tack-host .tarjeta",
+    {
+     "esperar": 1000
+    }
+   ],
+   "foco": "#tack-host .pie",
+   "etiqueta": "Cuando lo arreglamos nosotros",
+   "texto": "Cuando lo damos por arreglado nosotros, te aparece así. Aquí está la foto que se cortaba en el móvil. Si te encaja, Está bien así. Y si sigue mal, vuelve a pendientes sin escribir nada."
+  },
+  {
+   "id": "cierre",
+   "url": "https://tack-comment.pages.dev/",
+   "espera": 6000,
+   "sinSesion": true,
+   "foco": ".hero h1",
+   "etiqueta": "Y ya está",
+   "texto": "Y poco más. Si cambias de navegador, entra otra vez por tu enlace y tus comentarios siguen ahí. Cualquier duda, nos escribes."
+  }
+ ]
+}
