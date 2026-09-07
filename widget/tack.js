@@ -115,6 +115,7 @@
       eliminar: 'Eliminar comentario', eliminando: 'Eliminando…',
       eliminarSi: 'Sí, eliminar', eliminarNo: 'No',
       eliminarAviso: 'Se borra para todos y no se puede deshacer. Te llegará una copia por correo, que será el único rastro.',
+      eliminarAvisoMio: 'Se borra y no se puede deshacer. Nos llegará una copia por correo, que será el único rastro.',
       estados: { abierto: 'Pendiente', resuelto: 'Resuelto', confirmado: 'Cerrado', reabierto: 'Reabierto' },
       ahora: 'ahora', minutos: 'hace %s min', horas: 'hace %s h', dias: 'hace %s d',
       errVacio: 'Escribe un comentario, señala un elemento o adjunta algo.',
@@ -173,6 +174,7 @@
       eliminar: 'Delete comment', eliminando: 'Deleting…',
       eliminarSi: 'Yes, delete', eliminarNo: 'No',
       eliminarAviso: 'It is deleted for everyone and cannot be undone. You will get a copy by email, which will be the only trace left.',
+      eliminarAvisoMio: 'It is deleted and cannot be undone. We will get a copy by email, which will be the only trace left.',
       estados: { abierto: 'Open', resuelto: 'Resolved', confirmado: 'Closed', reabierto: 'Reopened' },
       ahora: 'just now', minutos: '%s min ago', horas: '%s h ago', dias: '%s d ago',
       errVacio: 'Write a comment, point at an element or attach something.',
@@ -1263,9 +1265,11 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       cuerpo.appendChild(el('div', { class: 'nota', text: txt('notaResuelto') }));
     }
 
-    /* Eliminar solo lo ve el equipo, y va aparte del resto de botones: es la
-       única acción sin vuelta atrás. Confirmación en dos pasos, dentro del panel. */
-    if (esAdmin()) {
+    /* Eliminar lo ve el equipo y, desde el 7-sep-2026, también el autor sobre lo suyo:
+       quien escribió algo por error tiene que poder quitarlo sin pedírnoslo. Va aparte
+       del resto de botones porque es la única acción sin vuelta atrás, y con
+       confirmación en dos pasos dentro del panel. */
+    if (esAdmin() || mio) {
       refs.borrar = el('div');
       refs.borrar.style.cssText = 'margin-top:4px';
       cuerpo.appendChild(refs.borrar);
@@ -1292,7 +1296,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     no.addEventListener('click', function () { pintarBorrar(c, false); });
 
     refs.borrar.appendChild(el('div', { class: 'confirmar' }, [
-      el('p', { text: txt('eliminarAviso') }),
+      el('p', { text: esAdmin() ? txt('eliminarAviso') : txt('eliminarAvisoMio') }),
       el('div', { class: 'opciones' }, [si, no])
     ]));
   }
@@ -1303,7 +1307,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     api('/api/comentarios/' + c.id, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clave: CLAVE_ADMIN })
+      body: JSON.stringify({ clave: CLAVE_ADMIN, autor_id: AUTOR_ID })
     }).then(function () {
       return cargar();
     }).then(function () {

@@ -256,17 +256,26 @@ async function cambiarEstado(id, request, env, cors) {
    y mandamos copia por correo: si alguien borra algo por error, queda el rastro. */
 async function eliminar(id, request, env, cors) {
   const cuerpo = await request.json().catch(() => ({}));
-  if (!esAdmin(cuerpo.clave, env)) {
-    return json({ error: 'solo el equipo puede eliminar comentarios' }, 403, cors);
-  }
 
   const fila = await env.DB.prepare('SELECT * FROM comentarios WHERE id = ?').bind(id).first();
   if (!fila) return json({ error: 'no existe' }, 404, cors);
+
+  /* Borra el equipo (con clave) o el AUTOR lo suyo. Lo segundo se apoya en el mismo
+     id anónimo de navegador con el que ya se edita lo propio: quien escribió algo por
+     error tiene que poder quitarlo sin pedírnoslo. No es autenticación y no pretende
+     serlo (está escrito en la ficha de la herramienta); es una herramienta de revisión
+     entre gente que se conoce, sobre un entorno que no es público. Se avisa por correo
+     en los dos casos, que es el único rastro que queda. */
+  const suyo = cuerpo.autor_id && String(cuerpo.autor_id) === String(fila.autor_id);
+  if (!esAdmin(cuerpo.clave, env) && !suyo) {
+    return json({ error: 'solo el equipo o quien lo escribió pueden eliminarlo' }, 403, cors);
+  }
 
   await env.DB.prepare('DELETE FROM comentarios WHERE id = ?').bind(id).run();
 
   await avisar(env, {
     tipo: 'eliminado',
+    porSuAutor: !!suyo,
     site: fila.site,
     mensaje: fila.mensaje,
     autor: fila.autor,
@@ -443,7 +452,7 @@ function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], a
       ${bloqueAdjuntos}
     </div>
     <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font:400 12px/1.5 -apple-system,sans-serif;color:#94a3b8">
-      ${tipo === 'eliminado' ? 'Este comentario se ha <b>borrado</b> de la lista. Esta copia es el único rastro que queda.<br>' : ''}Enviado desde el widget Tack Comment, instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
+      ${tipo === 'eliminado' ? 'Este comentario se ha <b>borrado</b> de la lista' + (datos.porSuAutor ? ', y lo ha borrado <b>quien lo escribió</b>' : ' desde el equipo') + '. Esta copia es el único rastro que queda.<br>' : ''}Enviado desde el widget Tack Comment, instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
     </div>
   </div>
 </body></html>`;
