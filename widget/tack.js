@@ -117,7 +117,7 @@
       eliminarAviso: 'Se borra para todos y no se puede deshacer. Te llegará una copia por correo, que será el único rastro.',
       eliminarAvisoMio: 'Se borra y no se puede deshacer. Nos llegará una copia por correo, que será el único rastro.',
       estados: { abierto: 'Pendiente', resuelto: 'Resuelto', confirmado: 'Cerrado', reabierto: 'Reabierto' },
-      retirar: 'Ya no aplica, cerrarlo',
+      retirar: 'Resuelto',
       respuestas: 'Conversación', sinRespuestas: 'Nadie ha respondido todavía.',
       responder: 'Responder', escribeRespuesta: 'Escribe tu respuesta. Puedes señalar una zona o adjuntar una imagen.',
       enviarRespuesta: 'Enviar respuesta', tu: 'tú',
@@ -180,7 +180,7 @@
       eliminarAviso: 'It is deleted for everyone and cannot be undone. You will get a copy by email, which will be the only trace left.',
       eliminarAvisoMio: 'It is deleted and cannot be undone. We will get a copy by email, which will be the only trace left.',
       estados: { abierto: 'Open', resuelto: 'Resolved', confirmado: 'Closed', reabierto: 'Reopened' },
-      retirar: 'No longer applies, close it',
+      retirar: 'Resolved',
       respuestas: 'Thread', sinRespuestas: 'No replies yet.',
       responder: 'Reply', escribeRespuesta: 'Write your reply. You can point at an area or attach an image.',
       enviarRespuesta: 'Send reply', tu: 'you',
@@ -518,6 +518,9 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .resp-cuando { font-weight: 400; color: #64748b; }
 .resp-texto { font-size: 13px; line-height: 1.5; color: #e2e8f0; white-space: pre-wrap; }
 .resp-sen { margin-top: 5px; font: 500 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #94a3b8; background: #0f172a; border-radius: 6px; padding: 5px 7px; }
+
+.con-check { display: inline-flex; align-items: center; gap: 7px; }
+.con-check svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
 .resp-ta { min-height: 62px !important; font-size: 13px !important; }
 .resp-barra { display: flex; align-items: center; gap: 4px; margin-top: 7px; }
@@ -1562,7 +1565,9 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
        nadie da por hecho algo que no ha tocado, y aun asi quien escribe no se queda
        atrapado con un comentario que ya no quiere. */
     if (mio && !esAdmin() && (c.estado === 'abierto' || c.estado === 'reabierto')) {
-      var quitar = el('button', { class: 'secundario', type: 'button', text: txt('retirar') });
+      var quitar = el('button', { class: 'secundario con-check', type: 'button' });
+      quitar.innerHTML = ICONOS.check;
+      quitar.appendChild(el('span', { text: txt('retirar') }));
       quitar.addEventListener('click', function () { cambiar(c, 'confirmado', quitar); });
       botones.push(quitar);
     }
