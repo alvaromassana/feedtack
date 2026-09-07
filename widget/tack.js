@@ -89,7 +89,7 @@
       invitaSi: 'Señalar dónde', invitaNo: 'Enviar sin señalar',
       nivelAyuda: 'para subir o bajar de elemento', nivelHermanos: 'para ir al de al lado',
       hechoPor: 'Hecho por ',
-      ocultarMarcas: 'Ocultar marcadores de feedback', sinSenalar: 'Este comentario no señalaba ningún elemento, así que no hay sitio al que ir.',
+      ocultarMarcas: 'Ocultar marcadores de feedback', resaltarFijo: 'Resaltar en la página mientras leo esto', sinSenalar: 'Este comentario no señalaba ningún elemento, así que no hay sitio al que ir.',
       errQuienEres: 'Pon tu nombre, para que sepamos de quién es cada comentario. Solo esta vez.',
       tuNombreObl: 'Tu nombre',
       recibido: 'Recibido, gracias',
@@ -148,7 +148,7 @@
       invitaSi: 'Point at it', invitaNo: 'Send without pointing',
       nivelAyuda: 'to go up or down a level', nivelHermanos: 'to move sideways',
       hechoPor: 'Made by ',
-      ocultarMarcas: 'Hide feedback markers', sinSenalar: 'This comment did not point at any element, so there is nowhere to go.',
+      ocultarMarcas: 'Hide feedback markers', resaltarFijo: 'Keep it highlighted on the page while I read this', sinSenalar: 'This comment did not point at any element, so there is nowhere to go.',
       errQuienEres: 'Add your name, so we know who each comment is from. Just this once.',
       tuNombreObl: 'Your name',
       recibido: 'Got it, thanks',
@@ -579,6 +579,15 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 .tk-pin.tk-resaltado { animation: tk-latido 1.1s cubic-bezier(.23,1,.32,1) 2; }
 @keyframes tk-latido { 0%,100% { transform: rotate(-45deg) scale(1); } 50% { transform: rotate(-45deg) scale(1.32); } }
 
+/* El aro FIJO no lleva el oscurecido de 4000px: se queda puesto mientras lees el
+   comentario, y con la pagina oscurecida no podrias leer lo de alrededor, que es
+   justo para lo que sirve. En su lugar, borde mas grueso y un halo suave. */
+.tk-foco--fijo {
+  box-shadow: 0 0 0 3px rgba(2,6,23,.18), 0 0 22px 4px color-mix(in srgb, var(--tk-acento, #4f46e5) 55%, transparent);
+  border-width: 3px;
+  animation: none;
+}
+
 /* aro que resalta el elemento al ir a él desde la lista */
 .tk-foco {
   position: absolute; z-index: 2147481400; pointer-events: none; border-radius: 4px;
@@ -793,6 +802,37 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   }
 
   var foco;
+  /* Id del comentario cuyo area se queda resaltada. El resaltado normal se va solo a los
+     dos segundos; este se queda hasta que se desmarca, para poder leer el comentario
+     viendo a que trozo de la pagina se refiere. */
+  var resaltadoFijo = null;
+  /* El aro. En su version FIJA no oscurece el resto de la pagina: si lo hiciera no se
+     podria leer nada alrededor, que es justo para lo que sirve dejarlo puesto. */
+  function pintarFoco(id, p, fijo) {
+    quitarFoco();
+    foco = el('div', { class: fijo ? 'tk-foco tk-foco--fijo' : 'tk-foco' });
+    foco.setAttribute('data-tack-foco', id);
+    foco.style.left = p.x + 'px'; foco.style.top = p.y + 'px';
+    foco.style.width = p.w + 'px'; foco.style.height = p.h + 'px';
+    document.body.appendChild(foco);
+    if (!fijo) setTimeout(function () { if (foco && !foco.classList.contains('tk-foco--fijo')) quitarFoco(); }, 2200);
+  }
+
+  function quitarFoco() {
+    if (foco && foco.parentNode) foco.parentNode.removeChild(foco);
+    foco = null;
+  }
+
+  /* Al cambiar el tamaño de la ventana el area medida se mueve, asi que el aro fijo hay
+     que recolocarlo o se queda señalando un sitio que ya no es. */
+  function recolocarFoco() {
+    if (!resaltadoFijo) return;
+    var c = comentarios.filter(function (x) { return x.id === resaltadoFijo; })[0];
+    if (!c || !deEstaPagina(c) || !(c.senalados || []).length) return;
+    var p = posicionDe(c.senalados[0]);
+    if (p) pintarFoco(c.id, p, true);
+  }
+
   function irA(id) {
     var c = comentarios.filter(function (x) { return x.id === id; })[0];
     if (!c) return;
@@ -809,12 +849,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
     window.scrollTo({ top: Math.max(0, p.y - window.innerHeight / 3), behavior: 'smooth' });
 
-    if (foco && foco.parentNode) foco.parentNode.removeChild(foco);
-    foco = el('div', { class: 'tk-foco' });
-    foco.style.left = p.x + 'px'; foco.style.top = p.y + 'px';
-    foco.style.width = p.w + 'px'; foco.style.height = p.h + 'px';
-    document.body.appendChild(foco);
-    setTimeout(function () { if (foco && foco.parentNode) foco.parentNode.removeChild(foco); }, 2200);
+    pintarFoco(c.id, p, resaltadoFijo === c.id);
 
     (capaPins || []).forEach(function (pin) {
       if (pin.getAttribute('data-tack-pin') === id) {
@@ -824,15 +859,24 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     });
   }
 
+  function soltarResaltado() {
+    if (!resaltadoFijo) return;
+    resaltadoFijo = null;
+    quitarFoco();
+  }
+
   var reposicionar = (function () {
     var t;
-    return function () { clearTimeout(t); t = setTimeout(pintarMarcas, 180); };
+    return function () { clearTimeout(t); t = setTimeout(function () { pintarMarcas(); recolocarFoco(); }, 180); };
   })();
   window.addEventListener('resize', reposicionar);
 
   // -------------------------------------------------------------- vista burbuja
 
   function pintarBurbuja() {
+    /* Cerrar el panel suelta el resaltado fijo: si no, queda un aro puesto en la pagina
+       sin nada que explique de que es. */
+    soltarResaltado();
     raiz.textContent = '';
     abierto = false;
     var n = pendientes().length;
@@ -1155,7 +1199,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
   function cabeceraDetalle() {
     var atras = el('button', { class: 'atras', type: 'button', 'aria-label': txt('volver'), html: ICONOS.flecha });
-    atras.addEventListener('click', function () { vista = 'lista'; pintarPanel(); });
+    atras.addEventListener('click', function () { soltarResaltado(); vista = 'lista'; pintarPanel(); });
     var c = comentarios.filter(function (x) { return x.id === detalleId; })[0];
     var t = el('div', {}, [el('h2', { text: txt('comentario') + (c ? numeroDe(c) : '') })]);
     if (c) t.querySelector('h2').appendChild(el('span', { class: 'sub', text: nombrePagina(c) }));
@@ -1212,6 +1256,28 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         ]));
       });
       cuerpo.appendChild(caja);
+    }
+
+    /* Mantener el area resaltada mientras se lee el comentario. Solo tiene sentido si
+       señalo algo y si ese algo esta en la pagina que estas viendo. */
+    if (deEstaPagina(c) && (c.senalados || []).length) {
+      var fijar = el('label', { class: 'ocultar' });
+      var chkFijar = el('input', { type: 'checkbox' });
+      chkFijar.checked = resaltadoFijo === c.id;
+      chkFijar.addEventListener('change', function () {
+        if (chkFijar.checked) {
+          resaltadoFijo = c.id;
+          if (marcasOcultas) { marcasOcultas = false; guardarOcultas(); pintarMarcas(); }
+          var p = posicionDe(c.senalados[0]);
+          if (p) pintarFoco(c.id, p, true);
+        } else {
+          resaltadoFijo = null;
+          quitarFoco();
+        }
+      });
+      fijar.appendChild(chkFijar);
+      fijar.appendChild(el('span', { text: txt('resaltarFijo') }));
+      cuerpo.appendChild(fijar);
     }
 
     cuerpo.appendChild(el('div', { class: 'linea' }));
