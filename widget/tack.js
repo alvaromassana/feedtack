@@ -89,6 +89,8 @@
       invitaSi: 'Señalar dónde', invitaNo: 'Enviar sin señalar',
       nivelAyuda: 'para subir o bajar de elemento', nivelHermanos: 'para ir al de al lado',
       hechoPor: 'Hecho por ',
+      errQuienEres: 'Pon tu nombre, para que sepamos de quién es cada comentario. Solo esta vez.',
+      tuNombreObl: 'Tu nombre',
       recibido: 'Recibido, gracias',
       recibidoTexto: 'Lo revisamos y te contamos. Puedes editarlo mientras tanto desde "Ya dichos".',
       verTodos: 'Ver todos', escribirOtro: 'Escribir otro',
@@ -144,6 +146,8 @@
       invitaSi: 'Point at it', invitaNo: 'Send without pointing',
       nivelAyuda: 'to go up or down a level', nivelHermanos: 'to move sideways',
       hechoPor: 'Made by ',
+      errQuienEres: 'Add your name, so we know who each comment is from. Just this once.',
+      tuNombreObl: 'Your name',
       recibido: 'Got it, thanks',
       recibidoTexto: 'We will look at it and get back to you. You can still edit it from "Already said".',
       verTodos: 'See all', escribirOtro: 'Write another',
@@ -514,6 +518,7 @@ textarea::placeholder, input::placeholder { color: #64748b; }
   // Lo que va en el documento real (fuera del shadow)
   var CSS_DOC = `
 .tk-senalando, .tk-senalando * { cursor: crosshair !important; }
+input[type=text].pide { border-color: #f87171; box-shadow: 0 0 0 3px rgba(248,113,113,.18); }
 .firma { padding: 9px 16px 12px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #1e293b; }
 .firma a { color: #94a3b8; text-decoration: none; font-weight: 600; }
 .firma a:hover { color: var(--acento); text-decoration: underline; }
@@ -907,10 +912,10 @@ textarea::placeholder, input::placeholder { color: #64748b; }
     cuerpo.appendChild(refs.adjuntos);
     pintarAdjuntos();
 
-    refs.autor = el('input', { type: 'text', placeholder: txt('tuNombre'), 'aria-label': txt('tuNombre') });
+    refs.autor = el('input', { type: 'text', placeholder: txt('tuNombreObl'), 'aria-label': txt('tuNombreObl') });
     if (!borrador.autor) { try { borrador.autor = localStorage.getItem('tack_autor') || ''; } catch (e) {} }
     refs.autor.value = borrador.autor;
-    refs.autor.addEventListener('input', function () { borrador.autor = refs.autor.value; });
+    refs.autor.addEventListener('input', function () { borrador.autor = refs.autor.value; refs.autor.classList.remove('pide'); if (refs.autor.value.trim()) mostrarError(''); });
     cuerpo.appendChild(refs.autor);
 
     refs.error = el('div');
@@ -1558,8 +1563,17 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 
     if (grabando) pararVoz();
 
+    /* El nombre se pide UNA vez y luego se recuerda. Era opcional y en la practica se
+       saltaba: con varias personas revisando la misma web, un comentario sin firmar
+       obliga a preguntar de quien era, que es justo el trabajo que esto evita.
+       Quien entra por su enlace personal (?tack_yo=) no ve esto nunca. */
     var autor = (refs.autor.value || '').trim();
-    try { if (autor) localStorage.setItem('tack_autor', autor); } catch (e) {}
+    if (!autor) {
+      mostrarError(txt('errQuienEres'));
+      if (refs.autor) { refs.autor.classList.add('pide'); refs.autor.focus(); }
+      return;
+    }
+    try { localStorage.setItem('tack_autor', autor); } catch (e) {}
 
     refs.enviar.disabled = true;
     refs.enviar.textContent = txt('enviando');
