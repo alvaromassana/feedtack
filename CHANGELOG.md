@@ -10,6 +10,15 @@ All notable changes to Tack Comment are listed here. The format follows
 - Every comment is a thread: anyone can reply, as many times as needed, pointing at an area
   or attaching an image. New `respuestas` table in D1 (run `esquema.sql` again to create it).
 - Whoever wrote a comment can close it, without being on the team.
+- A guide for reviewers, at `/guia/` (Spanish) and `/guia/en/` (English): one short clip per
+  action, same page for every client, public with `noindex`. Recorded by `qa/guia-clips.mjs`
+  against the demo with every API call intercepted, so no comment ever reaches the database.
+
+### Fixed
+- The confirmation after sending pointed people to a tab called "Already said". The tab is
+  called "History".
+- The comment placeholder still offered voice notes, which were taken out of the interface on
+  September 7.
 
 ## [0.1.0] - 2026-09-08
 

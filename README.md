@@ -145,6 +145,11 @@ automatically.
 Without the key you can write, edit and delete your own, and confirm or reopen what's been
 resolved. Nothing else.
 
+- **Give reviewers the guide too**: [tack-comment.pages.dev/guia/](https://tack-comment.pages.dev/guia/)
+  (Spanish) and [/guia/en/](https://tack-comment.pages.dev/guia/en/) (English). Every action in
+  clips of a few seconds, same page for everyone, no sign-up. Regenerate it with
+  `node qa/guia-clips.mjs` when the widget changes.
+
 ## The WordPress plugin
 
 Install `wordpress/tack-comment.zip` like any other plugin. Settings under

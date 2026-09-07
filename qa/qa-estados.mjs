@@ -116,19 +116,30 @@ await shot('04-relleno-completo');
 await shot('04b-relleno-detalle', { clip: { x: 1010, y: 200, width: 430, height: 700 } });
 
 // --- 5. grabando nota de voz
+// La nota de voz se retiró de la interfaz el 7-sep-2026 y el código de grabación sigue ahí.
+// Este paso se salta si el botón no está, en vez de tumbar la batería entera; el día que
+// vuelva, vuelve solo. Se DICE que se ha saltado: un caso silenciado no es un caso que pasa.
 console.log('[5] grabando voz');
-await p.evaluate(() => {
+const hayVoz = await p.evaluate(() => {
   const s = document.querySelector('#tack-host').shadowRoot;
-  [...s.querySelectorAll('.acc')].find(b => b.textContent.includes('Nota de voz')).click();
+  return [...s.querySelectorAll('.acc')].some(b => b.textContent.includes('Nota de voz'));
 });
-await p.waitForTimeout(2200);
-await shot('05-grabando-voz', { clip: { x: 1010, y: 200, width: 430, height: 700 } });
-await p.evaluate(() => {
-  const s = document.querySelector('#tack-host').shadowRoot;
-  [...s.querySelectorAll('.acc')].find(b => b.textContent.includes('Parar')).click();
-});
-await p.waitForTimeout(900);
-await shot('05b-voz-adjuntada', { clip: { x: 1010, y: 200, width: 430, height: 700 } });
+if (!hayVoz) {
+  console.log('  SALTADO: la nota de voz no está en la interfaz');
+} else {
+  await p.evaluate(() => {
+    const s = document.querySelector('#tack-host').shadowRoot;
+    [...s.querySelectorAll('.acc')].find(b => b.textContent.includes('Nota de voz')).click();
+  });
+  await p.waitForTimeout(2200);
+  await shot('05-grabando-voz', { clip: { x: 1010, y: 200, width: 430, height: 700 } });
+  await p.evaluate(() => {
+    const s = document.querySelector('#tack-host').shadowRoot;
+    [...s.querySelectorAll('.acc')].find(b => b.textContent.includes('Parar')).click();
+  });
+  await p.waitForTimeout(900);
+  await shot('05b-voz-adjuntada', { clip: { x: 1010, y: 200, width: 430, height: 700 } });
+}
 
 // --- 6. enviado
 console.log('[6] enviado');
