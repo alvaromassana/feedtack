@@ -73,11 +73,11 @@
 
   var TEXTOS = {
     es: {
-      titulo: 'Comentarios', pestNuevo: 'Escribir uno', pestLista: 'Ya dichos',
+      titulo: 'Comentarios', pestNuevo: 'Añadir feedback', pestLista: 'Historial',
       cerrar: 'Cerrar', volver: 'Volver a la lista',
       placeholder: 'Cuéntanos qué cambiarías. Puedes señalar uno o varios elementos, adjuntar una captura y grabar una nota de voz, todo en el mismo comentario.',
       tuComentario: 'Tu comentario', tuNombre: 'Tu nombre (opcional)',
-      senalar: 'Señalar', senalarOtro: 'Señalar otro', captura: 'Captura',
+      senalar: 'Señalar elemento', senalarOtro: 'Señalar elemento', captura: 'Captura',
       notaVoz: 'Nota de voz', adjuntar: 'Adjuntar', parar: 'Parar',
       enviar: 'Enviar comentario', enviando: 'Enviando…',
       pieEnvio: 'Se envía junto a la página y el navegador que estás usando.',
@@ -89,7 +89,7 @@
       invitaSi: 'Señalar dónde', invitaNo: 'Enviar sin señalar',
       nivelAyuda: 'para subir o bajar de elemento', nivelHermanos: 'para ir al de al lado',
       hechoPor: 'Hecho por ',
-      ocultarMarcas: 'Esconder las chinchetas de la página', sinSenalar: 'Este comentario no señalaba ningún elemento, así que no hay sitio al que ir.',
+      ocultarMarcas: 'Ocultar marcadores de feedback', sinSenalar: 'Este comentario no señalaba ningún elemento, así que no hay sitio al que ir.',
       errQuienEres: 'Pon tu nombre, para que sepamos de quién es cada comentario. Solo esta vez.',
       tuNombreObl: 'Tu nombre',
       recibido: 'Recibido, gracias',
@@ -132,11 +132,11 @@
       errTotal: 'Entre todos los adjuntos superas %s. Quita alguno.'
     },
     en: {
-      titulo: 'Comments', pestNuevo: 'Write one', pestLista: 'Already said',
+      titulo: 'Comments', pestNuevo: 'Add feedback', pestLista: 'History',
       cerrar: 'Close', volver: 'Back to list',
       placeholder: 'Tell us what you would change. You can point at one or more elements, attach a screenshot and record a voice note, all in the same comment.',
       tuComentario: 'Your comment', tuNombre: 'Your name (optional)',
-      senalar: 'Point at it', senalarOtro: 'Point at another', captura: 'Screenshot',
+      senalar: 'Point at element', senalarOtro: 'Point at element', captura: 'Screenshot',
       notaVoz: 'Voice note', adjuntar: 'Attach', parar: 'Stop',
       enviar: 'Send comment', enviando: 'Sending…',
       pieEnvio: 'Sent along with the page and browser you are using.',
@@ -148,7 +148,7 @@
       invitaSi: 'Point at it', invitaNo: 'Send without pointing',
       nivelAyuda: 'to go up or down a level', nivelHermanos: 'to move sideways',
       hechoPor: 'Made by ',
-      ocultarMarcas: 'Hide the pins on the page', sinSenalar: 'This comment did not point at any element, so there is nowhere to go.',
+      ocultarMarcas: 'Hide feedback markers', sinSenalar: 'This comment did not point at any element, so there is nowhere to go.',
       errQuienEres: 'Add your name, so we know who each comment is from. Just this once.',
       tuNombreObl: 'Your name',
       recibido: 'Got it, thanks',
@@ -342,6 +342,9 @@
   background: transparent; color: #94a3b8; font-size: 18px; line-height: 1; flex: none;
   display: flex; align-items: center; justify-content: center; font-family: inherit;
 }
+/* margin-left:auto la empuja a su esquina: el titulo va dentro de un div que no crece,
+   asi que sin esto el aspa se quedaba flotando pegada al texto. */
+.cab .cerrar { margin-left: auto; align-self: flex-start; }
 .cerrar:hover, .atras:hover { background: rgba(255,255,255,.07); color: #f8fafc; }
 .atras svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
@@ -363,9 +366,11 @@
 
 .cuerpo { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
 
-textarea, input[type=text] {
+.tk textarea, .tk input[type=text] {
+  /* El `.tk` de delante NO sobra: el reset de arriba (.tk *) pone padding 0 y le gana por
+     especificidad a un selector de elemento pelado, asi que el texto tocaba el borde. */
   width: 100%; background: #1e293b; color: #f1f5f9; border: 1px solid #334155;
-  border-radius: 10px; padding: 10px 12px; font-size: 14px; resize: vertical; font-family: inherit;
+  border-radius: 10px; padding: 11px 13px; font-size: 14px; resize: vertical; font-family: inherit;
 }
 textarea { min-height: 88px; }
 textarea:focus, input[type=text]:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px color-mix(in srgb, var(--acento) 25%, transparent); }
@@ -373,6 +378,7 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 
 /* ---- acciones ---- */
 .acciones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.acciones--2 { grid-template-columns: repeat(2, 1fr); }
 .acc {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
   padding: 11px 4px; background: #1e293b; border: 1px solid #334155; border-radius: 10px;
@@ -454,7 +460,7 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .secundario { height: 42px; padding: 0 16px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; }
 .secundario:hover { background: #273549; }
 
-.ocultar { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 9px 11px; border: 1px solid #1e293b; border-radius: 8px; cursor: pointer; color: #94a3b8; font-size: 12px; user-select: none; }
+.ocultar { display: flex; align-items: center; gap: 8px; margin: 0 16px 4px; padding: 9px 11px; border: 1px solid #1e293b; border-radius: 8px; cursor: pointer; color: #94a3b8; font-size: 12px; user-select: none; }
 .ocultar:hover { border-color: #334155; color: #cbd5e1; }
 .ocultar input { accent-color: var(--acento); width: 15px; height: 15px; cursor: pointer; margin: 0; }
 
@@ -860,6 +866,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     } else {
       panel.appendChild(cabecera());
       panel.appendChild(pestanas());
+      panel.appendChild(interruptorOcultar());
       panel.appendChild(vista === 'lista' ? cuerpoLista() : cuerpoNuevo());
     }
 
@@ -885,6 +892,22 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     var x = el('button', { class: 'cerrar', type: 'button', 'aria-label': txt('cerrar'), text: '×' });
     x.addEventListener('click', pintarBurbuja);
     return el('div', { class: 'cab' }, [t, x]);
+  }
+
+  /* El interruptor de ocultar los marcadores va debajo de las pestañas y no dentro de una
+     de ellas: tapan lo que estás mirando tanto si escribes como si repasas el historial. */
+  function interruptorOcultar() {
+    var caja = el('label', { class: 'ocultar' });
+    var chk = el('input', { type: 'checkbox' });
+    chk.checked = marcasOcultas;
+    chk.addEventListener('change', function () {
+      marcasOcultas = chk.checked;
+      guardarOcultas();
+      pintarMarcas();
+    });
+    caja.appendChild(chk);
+    caja.appendChild(el('span', { text: txt('ocultarMarcas') }));
+    return caja;
   }
 
   function pestanas() {
@@ -922,7 +945,10 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
     refs.btnSenalar = accion(ICONOS.diana, senalados.length ? txt('senalarOtro') : txt('senalar'), activarSenalar);
     refs.btnCaptura = accion(ICONOS.camara, txt('captura'), hacerCaptura);
-    refs.btnVoz = accion(ICONOS.micro, txt('notaVoz'), alternarVoz);
+    /* Nota de voz retirada de la interfaz el 7-sep-2026 a peticion de Alvaro ("de momento").
+       El codigo de grabacion se queda entero: volver a ponerla es descomentar esta linea y
+       devolver refs.btnVoz a la fila de acciones. */
+    // refs.btnVoz = accion(ICONOS.micro, txt('notaVoz'), alternarVoz);
 
     var subir = el('input', { type: 'file', accept: 'image/*', multiple: '' });
     subir.style.display = 'none';
@@ -933,7 +959,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     refs.btnImagen = accion(ICONOS.imagen, txt('adjuntar'), function () { subir.click(); });
     refs.btnImagen.style.cssText = 'width:100%;flex-direction:row;gap:7px';
 
-    cuerpo.appendChild(el('div', { class: 'acciones' }, [refs.btnSenalar, refs.btnCaptura, refs.btnVoz]));
+    cuerpo.appendChild(el('div', { class: 'acciones acciones--2' }, [refs.btnSenalar, refs.btnCaptura]));
     cuerpo.appendChild(refs.btnImagen);
     cuerpo.appendChild(subir);
 
@@ -1065,18 +1091,6 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       caja.appendChild(b);
     });
     cuerpo.appendChild(caja);
-
-    var interruptor = el('label', { class: 'ocultar' });
-    var chk = el('input', { type: 'checkbox' });
-    chk.checked = marcasOcultas;
-    chk.addEventListener('change', function () {
-      marcasOcultas = chk.checked;
-      guardarOcultas();
-      pintarMarcas();
-    });
-    interruptor.appendChild(chk);
-    interruptor.appendChild(el('span', { text: txt('ocultarMarcas') }));
-    cuerpo.appendChild(interruptor);
 
     var lista = ordenados(filtrados());
     if (!lista.length) {

@@ -273,18 +273,27 @@ async function eliminar(id, request, env, cors) {
 
   await env.DB.prepare('DELETE FROM comentarios WHERE id = ?').bind(id).run();
 
-  await avisar(env, {
-    tipo: 'eliminado',
-    porSuAutor: !!suyo,
-    site: fila.site,
-    mensaje: fila.mensaje,
-    autor: fila.autor,
-    contexto: JSON.parse(fila.contexto || '{}'),
-    senalados: JSON.parse(fila.senalados || '[]'),
-    adjuntos: [], id
-  });
+  /* El aviso va DESPUES de borrar, asi que si falla el borrado ya esta hecho: devolver
+     error haria que el usuario reintentase algo que ya ocurrio, y encima viendo un fallo.
+     Se avisa de que la copia no salio, que es lo unico que se pierde. */
+  let copiaEnviada = true;
+  try {
+    await avisar(env, {
+      tipo: 'eliminado',
+      porSuAutor: !!suyo,
+      site: fila.site,
+      mensaje: fila.mensaje,
+      autor: fila.autor,
+      contexto: JSON.parse(fila.contexto || '{}'),
+      senalados: JSON.parse(fila.senalados || '[]'),
+      adjuntos: [], id
+    });
+  } catch (e) {
+    copiaEnviada = false;
+    console.error('tack: borrado OK pero la copia por correo fallo', id, e && e.message);
+  }
 
-  return json({ ok: true, eliminado: id }, 200, cors);
+  return json({ ok: true, eliminado: id, copiaEnviada }, 200, cors);
 }
 
 // ────────────────────────────────────────────────────────────────── correo
@@ -390,7 +399,7 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], adjuntos = [], tipo }) {
+function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], adjuntos = [], tipo, porSuAutor }) {
   const c = contexto || {};
   const filas = [
     ['Página', c.titulo],
@@ -452,7 +461,7 @@ function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], a
       ${bloqueAdjuntos}
     </div>
     <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font:400 12px/1.5 -apple-system,sans-serif;color:#94a3b8">
-      ${tipo === 'eliminado' ? 'Este comentario se ha <b>borrado</b> de la lista' + (datos.porSuAutor ? ', y lo ha borrado <b>quien lo escribió</b>' : ' desde el equipo') + '. Esta copia es el único rastro que queda.<br>' : ''}Enviado desde el widget Tack Comment, instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
+      ${tipo === 'eliminado' ? 'Este comentario se ha <b>borrado</b> de la lista' + (porSuAutor ? ', y lo ha borrado <b>quien lo escribió</b>' : ' desde el equipo') + '. Esta copia es el único rastro que queda.<br>' : ''}Enviado desde el widget Tack Comment, instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
     </div>
   </div>
 </body></html>`;
