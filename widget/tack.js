@@ -87,6 +87,8 @@
       invitaTitulo: '¿Nos señalas a qué te refieres?',
       invitaTexto: 'Si lo señalas, sabemos exactamente de qué hablas y luego puedes volver a este punto desde la lista. Sin señalar, el comentario queda suelto en la página.',
       invitaSi: 'Señalar dónde', invitaNo: 'Enviar sin señalar',
+      nivelAyuda: 'para subir o bajar de elemento', nivelHermanos: 'para ir al de al lado',
+      hechoPor: 'Hecho por ',
       recibido: 'Recibido, gracias',
       recibidoTexto: 'Lo revisamos y te contamos. Puedes editarlo mientras tanto desde "Ya dichos".',
       verTodos: 'Ver todos', escribirOtro: 'Escribir otro',
@@ -140,6 +142,8 @@
       invitaTitulo: 'Want to point at it?',
       invitaTexto: 'If you point at it we know exactly what you mean, and you can come back to this spot from the list. Without it, the comment floats loose on the page.',
       invitaSi: 'Point at it', invitaNo: 'Send without pointing',
+      nivelAyuda: 'to go up or down a level', nivelHermanos: 'to move sideways',
+      hechoPor: 'Made by ',
       recibido: 'Got it, thanks',
       recibidoTexto: 'We will look at it and get back to you. You can still edit it from "Already said".',
       verTodos: 'See all', escribirOtro: 'Write another',
@@ -510,6 +514,10 @@ textarea::placeholder, input::placeholder { color: #64748b; }
   // Lo que va en el documento real (fuera del shadow)
   var CSS_DOC = `
 .tk-senalando, .tk-senalando * { cursor: crosshair !important; }
+.firma { padding: 9px 16px 12px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #1e293b; }
+.firma a { color: #94a3b8; text-decoration: none; font-weight: 600; }
+.firma a:hover { color: var(--acento); text-decoration: underline; }
+
 .tk-marca {
   position: absolute; pointer-events: none; z-index: 2147482000;
   border: 2px solid var(--tk-acento, #4f46e5);
@@ -528,6 +536,7 @@ textarea::placeholder, input::placeholder { color: #64748b; }
   padding: 11px 18px; border-radius: 999px; box-shadow: 0 8px 28px rgba(2,6,23,.45);
   display: flex; align-items: center; gap: 9px; max-width: calc(100vw - 32px);
 }
+.tk-aviso .tk-sep { width: 1px; height: 14px; background: rgba(255,255,255,.2); }
 .tk-aviso .tk-esc { font: 600 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; background: rgba(255,255,255,.14); padding: 4px 6px; border-radius: 4px; }
 
 /* chincheta numerada sobre el elemento comentado */
@@ -820,8 +829,17 @@ textarea::placeholder, input::placeholder { color: #64748b; }
       panel.appendChild(vista === 'lista' ? cuerpoLista() : cuerpoNuevo());
     }
 
+    panel.appendChild(firma());
     raiz.appendChild(panel);
     if (vista === 'nuevo' && refs.mensaje) refs.mensaje.focus();
+  }
+
+  /* Firma discreta. Quien usa esto es un cliente mirando SU web, no el nuestro:
+     va al pie, en gris y pequeña, y nunca compite con el comentario que va a escribir. */
+  function firma() {
+    var a = el('a', { class: 'firma-a', text: 'Websalia', target: '_blank', rel: 'noopener' });
+    a.href = 'https://www.websalia.com/?utm_source=tack-comment&utm_medium=widget&utm_campaign=firma';
+    return el('div', { class: 'firma' }, [el('span', { text: txt('hechoPor') }), a]);
   }
 
   function cabecera() {
@@ -1292,7 +1310,7 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 
   // ------------------------------------------------------- modo señalar elemento
 
-  var marca, etiqueta, aviso;
+  var marca, etiqueta, aviso, elegido = null;
 
   function activarSenalar() {
     raiz.style.display = 'none';
@@ -1304,6 +1322,12 @@ textarea::placeholder, input::placeholder { color: #64748b; }
     etiqueta = el('div', { class: 'tk-etiqueta' });
     aviso = el('div', { class: 'tk-aviso' }, [
       el('span', { text: txt('clicParaComentar') }),
+      el('span', { class: 'tk-sep' }),
+      el('span', { class: 'tk-esc', text: '↑↓' }),
+      el('span', { text: txt('nivelAyuda') }),
+      el('span', { class: 'tk-esc', text: '←→' }),
+      el('span', { text: txt('nivelHermanos') }),
+      el('span', { class: 'tk-sep' }),
       el('span', { class: 'tk-esc', text: 'Esc' }),
       el('span', { text: txt('paraSalir') })
     ]);
@@ -1325,8 +1349,19 @@ textarea::placeholder, input::placeholder { color: #64748b; }
     return t;
   }
 
-  function alMover(e) {
-    var t = objetivo(e);
+  /* ¿Este elemento se puede señalar? Descarta lo nuestro, la raíz del documento y
+     lo que no ocupa sitio (un contenedor de 0x0 no se puede enmarcar ni entender). */
+  function senalable(t) {
+    if (!t || t.nodeType !== 1) return false;
+    if (t === host || host.contains(t)) return false;
+    if (t === marca || t === etiqueta || t === aviso) return false;
+    if (t.classList && (t.classList.contains('tk-pin') || t.classList.contains('tk-tick'))) return false;
+    if (t === document.documentElement || t === document.body) return false;
+    var r = t.getBoundingClientRect();
+    return r.width > 1 && r.height > 1;
+  }
+
+  function pintarMarca(t) {
     if (!t) { marca.style.display = 'none'; etiqueta.style.display = 'none'; return; }
     var r = t.getBoundingClientRect();
     marca.style.display = etiqueta.style.display = 'block';
@@ -1342,8 +1377,54 @@ textarea::placeholder, input::placeholder { color: #64748b; }
     etiqueta.style.top = (arriba ? r.top + scrollY - 30 : r.bottom + scrollY + 6) + 'px';
   }
 
-  function alClicar(e) {
+  function alMover(e) {
     var t = objetivo(e);
+    elegido = t;
+    pintarMarca(t);
+  }
+
+  /* Moverse por la jerarquía con el teclado. Existe porque el ratón solo alcanza el
+     elemento más profundo que hay bajo el cursor: en un hero con slider no hay forma
+     de elegir entre la foto, el slider y la sección entera, y son tres comentarios
+     distintos. Mismo gesto que el inspector del navegador. */
+  function hermano(t, dir) {
+    var n = t;
+    while (n) {
+      n = dir < 0 ? n.previousElementSibling : n.nextElementSibling;
+      if (senalable(n)) return n;
+    }
+    return null;
+  }
+
+  function navegar(dir) {
+    if (!elegido) return false;
+    var destino = null;
+    if (dir === 'arriba') {
+      var p = elegido.parentElement;
+      while (p && !senalable(p)) p = p.parentElement;
+      destino = p;
+    } else if (dir === 'abajo') {
+      var hijos = elegido.children;
+      for (var i = 0; i < hijos.length; i++) { if (senalable(hijos[i])) { destino = hijos[i]; break; } }
+    } else {
+      destino = hermano(elegido, dir === 'anterior' ? -1 : 1);
+    }
+    if (!destino) return false;
+    elegido = destino;
+    pintarMarca(elegido);
+    // Si el elemento nuevo se sale de la pantalla, acercarlo: si no, enmarcas a ciegas.
+    var r = elegido.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > innerHeight) {
+      elegido.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      setTimeout(function () { if (elegido) pintarMarca(elegido); }, 260);
+    }
+    return true;
+  }
+
+  function alClicar(e) {
+    // Ojo: NO se relee del evento. Si se ha navegado con el teclado, el elemento
+    // bueno es el que está enmarcado, no el que hay debajo del cursor.
+    var t = elegido || objetivo(e);
     e.preventDefault(); e.stopPropagation();
     if (t) {
       var r = t.getBoundingClientRect();
@@ -1358,10 +1439,15 @@ textarea::placeholder, input::placeholder { color: #64748b; }
   }
 
   function alTeclear(e) {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); salirSenalar(); }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); salirSenalar(); return; }
+    var dir = { ArrowUp: 'arriba', ArrowDown: 'abajo', ArrowLeft: 'anterior', ArrowRight: 'siguiente' }[e.key];
+    if (!dir) return;
+    e.preventDefault(); e.stopPropagation();
+    navegar(dir);
   }
 
   function salirSenalar() {
+    elegido = null;
     document.documentElement.classList.remove('tk-senalando');
     [marca, etiqueta, aviso].forEach(function (n) { if (n && n.parentNode) n.parentNode.removeChild(n); });
     document.removeEventListener('mousemove', alMover, true);
