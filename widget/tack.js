@@ -89,6 +89,7 @@
       invitaSi: 'Señalar dónde', invitaNo: 'Enviar sin señalar',
       nivelAyuda: 'para subir o bajar de elemento', nivelHermanos: 'para ir al de al lado',
       hechoPor: 'Hecho por ',
+      ocultarMarcas: 'Esconder las chinchetas de la página', sinSenalar: 'Este comentario no señalaba ningún elemento, así que no hay sitio al que ir.',
       errQuienEres: 'Pon tu nombre, para que sepamos de quién es cada comentario. Solo esta vez.',
       tuNombreObl: 'Tu nombre',
       recibido: 'Recibido, gracias',
@@ -146,6 +147,7 @@
       invitaSi: 'Point at it', invitaNo: 'Send without pointing',
       nivelAyuda: 'to go up or down a level', nivelHermanos: 'to move sideways',
       hechoPor: 'Made by ',
+      ocultarMarcas: 'Hide the pins on the page', sinSenalar: 'This comment did not point at any element, so there is nowhere to go.',
       errQuienEres: 'Add your name, so we know who each comment is from. Just this once.',
       tuNombreObl: 'Your name',
       recibido: 'Got it, thanks',
@@ -450,6 +452,10 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .secundario { height: 42px; padding: 0 16px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; }
 .secundario:hover { background: #273549; }
 
+.ocultar { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 9px 11px; border: 1px solid #1e293b; border-radius: 8px; cursor: pointer; color: #94a3b8; font-size: 12px; user-select: none; }
+.ocultar:hover { border-color: #334155; color: #cbd5e1; }
+.ocultar input { accent-color: var(--acento); width: 15px; height: 15px; cursor: pointer; margin: 0; }
+
 /* Aviso cuando pedimos el nombre por primera vez. */
 input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px rgba(248,113,113,.18) !important; }
 
@@ -714,12 +720,24 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
   var capaPins, regleta;
 
+  /* Esconder las chinchetas. Nace de revisar la web con el cliente delante: las
+     chinchetas tapan justo lo que se está mirando y no habia forma de quitarlas sin
+     cerrar el widget. Se recuerda entre paginas, que es como se usa. */
+  var marcasOcultas = (function () {
+    try { return localStorage.getItem('tack_ocultar') === '1'; } catch (e) { return false; }
+  })();
+
+  function guardarOcultas() {
+    try { localStorage.setItem('tack_ocultar', marcasOcultas ? '1' : '0'); } catch (e) {}
+  }
+
   function pintarMarcas() {
     if (capaPins) capaPins.forEach(function (n) { if (n.parentNode) n.parentNode.removeChild(n); });
     capaPins = [];
     if (regleta && regleta.parentNode) regleta.parentNode.removeChild(regleta);
     regleta = null;
     if (!document.body) return;
+    if (marcasOcultas) return;
 
     var aqui = ordenados(comentarios.filter(deEstaPagina));
     var visibles = aqui.filter(function (c) {
@@ -773,7 +791,12 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     if (!deEstaPagina(c)) { location.href = c.url; return; }
 
     var p = c.senalados && c.senalados.length ? posicionDe(c.senalados[0]) : null;
-    if (!p) return;
+    /* Sin elemento señalado no hay a donde llevarle. Antes esto era un `return` mudo:
+       clicabas el comentario y no pasaba nada, que parece que este roto. */
+    if (!p) { mostrarError(txt('sinSenalar')); return; }
+    /* Y si estaban escondidas, al ir a un comentario se vuelven a ver: si no, el aro
+       aparece sin su chincheta y no se entiende de cual es. */
+    if (marcasOcultas) { marcasOcultas = false; guardarOcultas(); pintarMarcas(); }
 
     window.scrollTo({ top: Math.max(0, p.y - window.innerHeight / 3), behavior: 'smooth' });
 
@@ -1040,6 +1063,18 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       caja.appendChild(b);
     });
     cuerpo.appendChild(caja);
+
+    var interruptor = el('label', { class: 'ocultar' });
+    var chk = el('input', { type: 'checkbox' });
+    chk.checked = marcasOcultas;
+    chk.addEventListener('change', function () {
+      marcasOcultas = chk.checked;
+      guardarOcultas();
+      pintarMarcas();
+    });
+    interruptor.appendChild(chk);
+    interruptor.appendChild(el('span', { text: txt('ocultarMarcas') }));
+    cuerpo.appendChild(interruptor);
 
     var lista = ordenados(filtrados());
     if (!lista.length) {
