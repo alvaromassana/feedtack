@@ -31,6 +31,7 @@ function tack_por_defecto() {
 		'color'       => '#4f46e5',
 		'label'       => 'Comentar',
 		'posicion'    => 'bottom-right',
+		'idioma'      => '',   // Websalia 2026-09-07: vacio = lo decide el lang de la pagina
 		'en_produccion' => 0,
 	);
 }
@@ -87,14 +88,15 @@ function tack_pintar() {
 	$a = tack_ajustes();
 
 	printf(
-		'<script src="%s?v=%s" data-site="%s" data-endpoint="%s" data-color="%s" data-label="%s" data-position="%s" defer></script>' . "\n",
+		'<script src="%s?v=%s" data-site="%s" data-endpoint="%s" data-color="%s" data-label="%s" data-position="%s" data-lang="%s" defer></script>' . "\n",
 		esc_url( $a['script'] ),
 		esc_attr( TACK_VERSION ),
 		esc_attr( $a['site'] ),
 		esc_url( $a['endpoint'] ),
 		esc_attr( $a['color'] ),
 		esc_attr( $a['label'] ),
-		esc_attr( $a['posicion'] )
+		esc_attr( $a['posicion'] ),
+		esc_attr( $a['idioma'] )
 	);
 }
 add_action( 'wp_footer', 'tack_pintar', 99 );
@@ -167,6 +169,14 @@ function tack_sanear( $entrada ) {
 	$salida['posicion'] = ( isset( $entrada['posicion'] ) && in_array( $entrada['posicion'], $posiciones, true ) )
 		? $entrada['posicion']
 		: $d['posicion'];
+
+	// Vacío = lo decide el atributo lang de la página. Hace falta cuando la web
+	// está en un idioma y quien la revisa habla otro (Arqués: web en inglés,
+	// diseñadoras en español), que es lo normal en una web de cliente.
+	$idiomas = array( '', 'es', 'en' );
+	$salida['idioma'] = ( isset( $entrada['idioma'] ) && in_array( $entrada['idioma'], $idiomas, true ) )
+		? $entrada['idioma']
+		: $d['idioma'];
 
 	return $salida;
 }
@@ -270,6 +280,29 @@ function tack_pagina_ajustes() {
 							}
 							?>
 						</select>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><label for="tack_idioma">Idioma del panel</label></th>
+					<td>
+						<select id="tack_idioma" name="<?php echo esc_attr( TACK_OPCION ); ?>[idioma]">
+							<?php
+							$idiomas = array(
+								''   => 'El de la página (automático)',
+								'es' => 'Español',
+								'en' => 'English',
+							);
+							foreach ( $idiomas as $valor => $texto ) {
+								printf(
+									'<option value="%s" %s>%s</option>',
+									esc_attr( $valor ),
+									selected( $a['idioma'], $valor, false ),
+									esc_html( $texto )
+								);
+							}
+							?>
+						</select>
+						<p class="description">Ponlo a mano cuando la web esté en un idioma y quien la revisa hable otro.</p>
 					</td>
 				</tr>
 				<tr>
