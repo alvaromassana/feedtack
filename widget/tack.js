@@ -367,8 +367,9 @@
 .cuerpo { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
 
 .tk textarea, .tk input[type=text] {
-  /* El `.tk` de delante NO sobra: el reset de arriba (.tk *) pone padding 0 y le gana por
-     especificidad a un selector de elemento pelado, asi que el texto tocaba el borde. */
+  /* El .tk de delante NO sobra: el reset de arriba (.tk *) pone padding 0 y le gana por
+     especificidad a un selector de elemento pelado, asi que el texto tocaba el borde.
+     Ojo: aqui dentro NO se pueden usar acentos graves, esto es un template literal. */
   width: 100%; background: #1e293b; color: #f1f5f9; border: 1px solid #334155;
   border-radius: 10px; padding: 11px 13px; font-size: 14px; resize: vertical; font-family: inherit;
 }
