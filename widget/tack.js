@@ -519,6 +519,32 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .resp-texto { font-size: 13px; line-height: 1.5; color: #e2e8f0; white-space: pre-wrap; }
 .resp-sen { margin-top: 5px; font: 500 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: #94a3b8; background: #0f172a; border-radius: 6px; padding: 5px 7px; }
 
+.resp-ta { min-height: 62px !important; font-size: 13px !important; }
+.resp-barra { display: flex; align-items: center; gap: 4px; margin-top: 7px; }
+/* Iconos pequeños, no botones: aqui responder es una accion dentro de una conversacion,
+   no el centro de la pantalla. El nombre aparece al pasar el raton. */
+.chico {
+  position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent; border-radius: 8px; color: #94a3b8;
+  cursor: pointer; font-family: inherit; transition: background .14s, color .14s, border-color .14s;
+}
+.chico:hover { background: #1e293b; border-color: #334155; color: #f1f5f9; }
+.chico:focus-visible { outline: 2px solid var(--acento); outline-offset: 1px; }
+.chico svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chico .tip {
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%) translateY(3px);
+  background: #020617; color: #e2e8f0; font-size: 11px; font-weight: 500; white-space: nowrap;
+  padding: 5px 8px; border-radius: 6px; pointer-events: none; opacity: 0;
+  box-shadow: 0 4px 14px rgba(2,6,23,.5); transition: opacity .14s, transform .14s; z-index: 5;
+}
+.chico:hover .tip, .chico:focus-visible .tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+.resp-enviar {
+  margin-left: auto; padding: 7px 13px; background: var(--acento); color: #fff; border: 0;
+  border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit;
+}
+.resp-enviar:hover:not(:disabled) { filter: brightness(1.12); }
+.resp-enviar:disabled { opacity: .6; cursor: default; }
+
 .ir-sitio { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 10px 12px; background: #1e293b; border: 1px solid #334155; border-radius: 10px; color: #cbd5e1; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: background .15s, border-color .15s; }
 .ir-sitio:hover { background: #273549; border-color: #475569; color: #f1f5f9; }
 .ir-sitio svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
@@ -682,6 +708,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     micro: '<svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/></svg>',
     stop: '<svg viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" stroke="none"/></svg>',
     check: '<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>',
+    clip: '<svg viewBox="0 0 24 24"><path d="M21.4 11.05l-9.19 9.19a5 5 0 0 1-7.07-7.07l9.19-9.19a3.33 3.33 0 0 1 4.71 4.71l-9.2 9.19a1.67 1.67 0 0 1-2.35-2.36l8.49-8.48"/></svg>',
     flecha: '<svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>'
   };
 
@@ -1076,7 +1103,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     pintarSenalado();
 
     refs.btnSenalar = accion(ICONOS.diana, senalados.length ? txt('senalarOtro') : txt('senalar'), function () { activarSenalar('nuevo'); });
-    refs.btnCaptura = accion(ICONOS.camara, txt('captura'), hacerCaptura);
+    refs.btnCaptura = accion(ICONOS.camara, txt('captura'), function () { hacerCaptura('nuevo'); });
     /* Nota de voz retirada de la interfaz el 7-sep-2026 a peticion de Alvaro ("de momento").
        El codigo de grabacion se queda entero: volver a ponerla es descomentar esta linea y
        devolver refs.btnVoz a la fila de acciones. */
@@ -1319,31 +1346,23 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       });
     }
 
-    if (respondiendoA !== c.id) {
-      var abrir = el('button', { class: 'secundario', type: 'button', text: txt('responder') });
-      abrir.addEventListener('click', function () {
-        respondiendoA = c.id;
-        respBorrador = { mensaje: '', senalados: [], adjuntos: [] };
-        pintarPanel();
-      });
-      caja.appendChild(abrir);
-      return caja;
-    }
-
-    // ---- compositor de la respuesta
-    var ta = el('textarea', { placeholder: txt('escribeRespuesta'), 'aria-label': txt('responder') });
+    /* Compositor SIEMPRE a la vista: un boton de "Responder" que solo sirve para
+       revelar un campo es un clic de peaje. Debajo, iconos pequeños en vez de botones
+       grandes, que aqui son una accion secundaria dentro de una conversacion, no el
+       centro de la pantalla. Cada uno lleva su tooltip. */
+    var ta = el('textarea', { class: 'resp-ta', placeholder: txt('escribeRespuesta'), 'aria-label': txt('responder') });
     ta.value = respBorrador.mensaje;
     ta.addEventListener('input', function () { respBorrador.mensaje = ta.value; });
     caja.appendChild(ta);
-    refs.respTexto = ta;
 
+    var pendientesAdj = [];
     if (respBorrador.senalados.length) {
-      var sen = el('div', { class: 'resp-sen' , text: respBorrador.senalados.map(function (x) { return x.etiqueta; }).join(', ') });
-      caja.appendChild(sen);
+      pendientesAdj.push(respBorrador.senalados.map(function (x) { return x.etiqueta; }).join(', '));
     }
     if (respBorrador.adjuntos.length) {
-      caja.appendChild(el('div', { class: 'resp-sen', text: respBorrador.adjuntos.length + txt('adjuntosCorreo') }));
+      pendientesAdj.push(respBorrador.adjuntos.length + txt('adjuntosCorreo'));
     }
+    if (pendientesAdj.length) caja.appendChild(el('div', { class: 'resp-sen', text: pendientesAdj.join('  ·  ') }));
 
     var subirR = el('input', { type: 'file', accept: 'image/*', multiple: '' });
     subirR.style.display = 'none';
@@ -1353,16 +1372,25 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       pintarPanel();
     });
 
-    var accs = el('div', { class: 'acciones acciones--2' });
-    var bSen = accion(ICONOS.diana, txt('senalar'), function () { activarSenalar('respuesta'); });
-    var bImg = accion(ICONOS.imagen, txt('adjuntar'), function () { subirR.click(); });
-    accs.appendChild(bSen); accs.appendChild(bImg);
-    caja.appendChild(accs);
-    caja.appendChild(subirR);
+    function chico(icono, etiqueta, onClick) {
+      var b = el('button', { class: 'chico', type: 'button', 'aria-label': etiqueta, title: etiqueta });
+      b.innerHTML = icono;
+      b.appendChild(el('span', { class: 'tip', text: etiqueta }));
+      b.addEventListener('click', onClick);
+      return b;
+    }
 
-    var env = el('button', { class: 'enviar', type: 'button', text: txt('enviarRespuesta') });
+    var barra = el('div', { class: 'resp-barra' });
+    barra.appendChild(chico(ICONOS.diana, txt('senalar'), function () { respondiendoA = c.id; activarSenalar('respuesta'); }));
+    barra.appendChild(chico(ICONOS.camara, txt('captura'), function () { respondiendoA = c.id; hacerCaptura('respuesta'); }));
+    barra.appendChild(chico(ICONOS.clip, txt('adjuntar'), function () { subirR.click(); }));
+
+    var env = el('button', { class: 'resp-enviar', type: 'button', text: txt('enviarRespuesta') });
     env.addEventListener('click', function () { enviarRespuesta(c, env); });
-    caja.appendChild(env);
+    barra.appendChild(env);
+
+    caja.appendChild(barra);
+    caja.appendChild(subirR);
 
     return caja;
   }
@@ -1825,7 +1853,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
   // ----------------------------------------------------------- captura de pantalla
 
-  function hacerCaptura() {
+  function hacerCaptura(destino) {
+    var aRespuesta = destino === 'respuesta';
     if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
       return mostrarError(txt('errSinCaptura'));
     }
@@ -1845,11 +1874,16 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         });
       })
       .then(function (blob) {
-        raiz.style.display = ''; vista = 'nuevo'; pintarPanel();
-        if (blob) anadir('imagen', 'captura.png', blob);
+        raiz.style.display = '';
+        vista = aRespuesta ? 'detalle' : 'nuevo';
+        if (blob) {
+          if (aRespuesta) respBorrador.adjuntos.push({ nombre: 'captura.png', blob: blob });
+          else anadir('imagen', 'captura.png', blob);
+        }
+        pintarPanel();
       })
       .catch(function () {
-        raiz.style.display = ''; vista = 'nuevo'; pintarPanel();
+        raiz.style.display = ''; vista = aRespuesta ? 'detalle' : 'nuevo'; pintarPanel();
         mostrarError(txt('errCaptura'));
       });
   }
