@@ -5,6 +5,8 @@
 > Feedtack was called **Tack Comment** until September 2026. The old repository URL and the
 > old jsDelivr paths still resolve, so existing installs keep working.
 
+**Website and docs: [feedtack.pages.dev](https://feedtack.pages.dev)** · [Docs](https://feedtack.pages.dev/docs/) · [Live demo](https://feedtack.pages.dev/demo/) · [Guide for your client](https://feedtack.pages.dev/guia/)
+
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](widget/feedtack.js)
 [![Runs on Cloudflare Workers](https://img.shields.io/badge/backend-Cloudflare%20Workers%20%2B%20D1-f38020.svg)](worker/)

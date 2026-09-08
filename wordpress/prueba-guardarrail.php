@@ -91,7 +91,7 @@ $pruebas = array(
 	array( 'script javascript: se rechaza',          array( 'script' => 'javascript:alert(1)' ),   'script',   'https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js' ),
 	array( 'color invalido se rechaza',  array( 'color' => 'rojo; background:url(x)' ), 'color',   '#4f46e5' ),
 	array( 'color valido se acepta',     array( 'color' => '#9a6b45' ),                 'color',   '#9a6b45' ),
-	array( 'posicion inventada se rechaza', array( 'posicion' => 'centro-raro' ),       'posicion','bottom-right' ),
+	array( 'posicion inventada se rechaza', array( 'posicion' => 'centro-raro' ),       'posicion','borde-derecho' ),
 	array( 'etiqueta con html se limpia', array( 'label' => '<b onclick=x>Hola</b>' ),  'label',   'Hola' ),
 );
 foreach ( $pruebas as $p ) {
