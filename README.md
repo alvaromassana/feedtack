@@ -21,7 +21,7 @@ No account, no SaaS, no per-seat pricing. One `<script>` tag and a Cloudflare Wo
 
 ![Pointing at an element, walking the hierarchy with the arrow keys and writing the comment](docs/img/demo.gif)
 
-**Try it:** [feedtack.pages.dev](https://feedtack.pages.dev) is a fake client site with
+**Try it:** [feedtack.pages.dev/demo/](https://feedtack.pages.dev/demo/) is a fake client site with
 the widget installed. Press *Comentar*, point at something, write a line. Comments written
 there are real and land in our inbox, so be nice.
 
