@@ -5,7 +5,7 @@
 import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
 const { chromium } = pkg;
 
-const URL_DEMO = process.argv[2] || 'https://tack-comment.pages.dev/';
+const URL_DEMO = process.argv[2] || 'https://feedtack.pages.dev/';
 const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 
 const b = await chromium.launch({ headless: true, executablePath: CHROME, args: ['--no-sandbox'] });
@@ -22,14 +22,14 @@ p.on('response', async r => {
 console.log('abriendo', URL_DEMO);
 await p.goto(URL_DEMO, { waitUntil: 'networkidle' });
 // esperar a que el widget esté listo de verdad, no a un timeout a ojo
-await p.waitForFunction(() => typeof window.Tack === 'object', null, { timeout: 15000 });
+await p.waitForFunction(() => typeof window.Feedtack === 'object', null, { timeout: 15000 });
 await p.waitForTimeout(300);
 
 // abrir y señalar un elemento real
-await p.evaluate(() => window.Tack.abrir());
+await p.evaluate(() => window.Feedtack.abrir());
 await p.waitForTimeout(300);
 await p.evaluate(() => {
-  const s = document.querySelector('#tack-host').shadowRoot;
+  const s = document.querySelector('#feedtack-host').shadowRoot;
   [...s.querySelectorAll('.acc')].find(b => b.textContent.includes('Señalar')).click();
 });
 await p.locator('.cifra').first().scrollIntoViewIfNeeded();
@@ -42,7 +42,7 @@ await p.waitForTimeout(400);
 
 // rellenar y adjuntar
 await p.evaluate(async () => {
-  const s = document.querySelector('#tack-host').shadowRoot;
+  const s = document.querySelector('#feedtack-host').shadowRoot;
   s.querySelector('textarea').value =
     'PRUEBA DEL SISTEMA. Este numero de proyectos entregados esta desactualizado, ya son 71. ' +
     'Adjunto la captura de la hoja que os pasamos en la reunion.';
@@ -56,7 +56,7 @@ await p.evaluate(async () => {
   g.fillStyle = '#14181d'; g.font = '600 20px sans-serif';
   g.fillText('Adjunto de prueba', 28, 70);
   g.font = '400 15px sans-serif';
-  g.fillText('Widget Tack Comment, prueba de extremo a extremo', 28, 105);
+  g.fillText('Widget Feedtack, prueba de extremo a extremo', 28, 105);
   g.fillText('Si ves esto en el correo, los adjuntos van bien.', 28, 132);
   const blob = await new Promise(r => c.toBlob(r, 'image/png'));
   const dt = new DataTransfer();
@@ -68,15 +68,15 @@ await p.evaluate(async () => {
 await p.waitForTimeout(500);
 
 console.log('enviando de verdad...');
-await p.evaluate(() => document.querySelector('#tack-host').shadowRoot.querySelector('.enviar').click());
+await p.evaluate(() => document.querySelector('#feedtack-host').shadowRoot.querySelector('.enviar').click());
 // el panel de éxito se autocierra a los 4,2 s, así que hay que mirarlo antes
 await p.waitForFunction(
-  () => !!document.querySelector('#tack-host').shadowRoot.querySelector('.hecho, .error'),
+  () => !!document.querySelector('#feedtack-host').shadowRoot.querySelector('.hecho, .error'),
   null, { timeout: 20000 }
 );
 
 const estadoFinal = await p.evaluate(() => {
-  const s = document.querySelector('#tack-host').shadowRoot;
+  const s = document.querySelector('#feedtack-host').shadowRoot;
   return {
     pantallaExito: !!s.querySelector('.hecho'),
     error: s.querySelector('.error')?.textContent || null

@@ -1,5 +1,5 @@
 /**
- * Tack Comment — backend del widget de feedback (Cloudflare Worker + D1)
+ * Feedtack — backend del widget de feedback (Cloudflare Worker + D1)
  *
  *   POST   /api/feedback            crear comentario (multipart) → guarda y avisa por correo
  *   GET    /api/comentarios?site=X  listar los de una web
@@ -26,7 +26,7 @@ export default {
     const cors = cabecerasCors(origen, env);
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (url.pathname === '/salud') return json({ ok: true, servicio: 'tack' }, 200, cors);
+    if (url.pathname === '/salud') return json({ ok: true, servicio: 'feedtack' }, 200, cors);
 
     if (!cors['Access-Control-Allow-Origin']) {
       return json({ error: 'origen no permitido' }, 403, {});
@@ -181,7 +181,7 @@ async function responder(comentarioId, request, env, cors) {
       anterior: padre.mensaje
     });
   } catch (e) {
-    console.error('tack: respuesta guardada pero el aviso fallo', id, e && e.message);
+    console.error('feedtack: respuesta guardada pero el aviso fallo', id, e && e.message);
   }
 
   return json({ ok: true, id }, 200, cors);
@@ -392,7 +392,7 @@ async function eliminar(id, request, env, cors) {
     });
   } catch (e) {
     copiaEnviada = false;
-    console.error('tack: borrado OK pero la copia por correo fallo', id, e && e.message);
+    console.error('feedtack: borrado OK pero la copia por correo fallo', id, e && e.message);
   }
 
   return json({ ok: true, eliminado: id, copiaEnviada }, 200, cors);
@@ -409,7 +409,7 @@ async function avisar(env, datos) {
 
   const prefijo = { nuevo: '💬', editado: '✏️', reabierto: '🔁', eliminado: '🗑️', respuesta: '↩️' }[datos.tipo] || '💬';
   const mote = { nuevo: '', editado: '[editado] ', reabierto: '[reabierto] ', eliminado: '[ELIMINADO] ', respuesta: '[respuesta] ' }[datos.tipo] || '';
-  const asunto = `${prefijo} Tack · ${datos.site}: ${mote}${resumir(datos.mensaje, datos.senalados)}`;
+  const asunto = `${prefijo} Feedtack · ${datos.site}: ${mote}${resumir(datos.mensaje, datos.senalados)}`;
 
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -564,7 +564,7 @@ function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], a
       ${bloqueAdjuntos}
     </div>
     <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font:400 12px/1.5 -apple-system,sans-serif;color:#94a3b8">
-      ${tipo === 'eliminado' ? 'Este comentario se ha <b>borrado</b> de la lista' + (porSuAutor ? ', y lo ha borrado <b>quien lo escribió</b>' : ' desde el equipo') + '. Esta copia es el único rastro que queda.<br>' : ''}Enviado desde el widget Tack Comment, instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
+      ${tipo === 'eliminado' ? 'Este comentario se ha <b>borrado</b> de la lista' + (porSuAutor ? ', y lo ha borrado <b>quien lo escribió</b>' : ' desde el equipo') + '. Esta copia es el único rastro que queda.<br>' : ''}Enviado desde el widget Feedtack, instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
     </div>
   </div>
 </body></html>`;

@@ -1,10 +1,23 @@
 # Changelog
 
-All notable changes to Tack Comment are listed here. The format follows
+All notable changes to Feedtack are listed here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+
+### Changed
+- **The project is now called Feedtack** (it was Tack Comment). Renamed everywhere: the
+  repository, the widget file (`widget/feedtack.js`), the WordPress plugin, the worker
+  template, the docs and the demo. Existing installs keep working: the old repository URL
+  and the old jsDelivr paths still resolve, the widget still reads the `tack_*` keys saved
+  in the browser and still accepts `?tack_yo=` and `?tack_admin=` links already sent out,
+  and `window.Tack` is kept as an alias. Those aliases go away once no review started
+  before the rename is still open.
+
+### Fixed
+- The README no longer promises voice notes: the button has been commented out since
+  7 September 2026.
 
 ### Added
 - Every comment is a thread: anyone can reply, as many times as needed, pointing at an area
@@ -33,12 +46,12 @@ and the September changes came out of the first day of use on a real client site
 - Comments come back to the page: numbered pins on the elements, a scrollbar ruler, and a
   list grouped by page where the client can edit their own comments.
 - Review workflow: `open → resolved → confirmed | reopened`, with the team key
-  (`?tack_admin=`) to resolve, reopen and delete.
+  (`?feedtack_admin=`) to resolve, reopen and delete.
 - A nudge to point at something when a comment is about to be sent without a target.
 - Spanish and English, picked from the page `lang` attribute or forced with `data-lang`.
 - WordPress plugin with a production lock: it refuses to load when
   `wp_get_environment_type()` is `production` unless explicitly overridden.
-- Per-person links: `?tack_yo=Name` signs every comment from that browser, so with several
+- Per-person links: `?feedtack_yo=Name` signs every comment from that browser, so with several
   reviewers you know who asked for what.
 - The name is asked once (and remembered) instead of being optional. Optional fields don't
   get filled in.
@@ -59,5 +72,5 @@ and the September changes came out of the first day of use on a real client site
 - Deleting a comment failed after a previous deletion in the same session.
 - Signature and name-warning styles were in the wrong stylesheet.
 
-[Unreleased]: https://github.com/alvaromassana/tack-comment/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/alvaromassana/tack-comment/releases/tag/v0.1.0
+[Unreleased]: https://github.com/alvaromassana/feedtack/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/alvaromassana/feedtack/releases/tag/v0.1.0

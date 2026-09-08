@@ -1,10 +1,10 @@
-# Videotutorial de Tack Comment — notas de montaje
+# Videotutorial de Feedtack — notas de montaje
 
 Dos vídeos, grabados sobre la **demo de Vallmar Arquitectura** (cliente ficticio:
-`https://tack-comment.pages.dev`), con la skill `tutorial-video`.
+`https://feedtack.pages.dev`), con la skill `tutorial-video`.
 
-- `00-entrar/guion.json` → `tack-00-entrar.mp4` (1:23) — entrar y dejar el primer comentario.
-- `01-despues/guion.json` → `tack-01-despues.mp4` (1:33) — lo que pasa con lo que ya has dicho.
+- `00-entrar/guion.json` → `feedtack-00-entrar.mp4` (1:23) — entrar y dejar el primer comentario.
+- `01-despues/guion.json` → `feedtack-01-despues.mp4` (1:33) — lo que pasa con lo que ya has dicho.
 
 ```bash
 cd "$TUTORIAL_VIDEO"   # tools/tutorial-video del sistema de Websalia
@@ -37,7 +37,7 @@ Los dos vídeos usan los mismos dos comentarios que la guía de GIFs, para poder
 ## Lo que el widget NO tiene hoy, y por eso no sale en la voz
 
 - **Nota de voz**: retirada de la interfaz el 7-sep-2026 a petición de Álvaro
-  (`widget/tack.js:1113`, comentada). El guion habla solo de captura y adjuntar.
+  (`widget/feedtack.js:1113`, comentada). El guion habla solo de captura y adjuntar.
 - El disparador es una **pestaña pegada al borde derecho**, no un botón flotante. La franja de
   arriba de la demo todavía dice "el botón de abajo a la derecha": es texto de la demo, no del
   widget, y sale en pantalla mientras la voz dice pestaña.

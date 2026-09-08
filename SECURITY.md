@@ -2,13 +2,13 @@
 
 ## What this is, and what it isn't
 
-Tack Comment is a review tool for sites that are **not public yet**. Its security model is
+Feedtack is a review tool for sites that are **not public yet**. Its security model is
 built for that, and only for that:
 
 - **Identity is not authentication.** Who wrote what is an anonymous id stored in the
   browser's `localStorage`. It's enough to let a reviewer edit or delete their own comments
   on a private staging site. It's not enough for anything sensitive.
-- **The team key** (`?tack_admin=`) is what allows resolving, reopening and deleting other
+- **The team key** (`?feedtack_admin=`) is what allows resolving, reopening and deleting other
   people's comments. Treat it like a password: it's sent to the Worker and stored in the
   browser that used it.
 - **Origins are allowlisted.** The Worker only accepts requests from the domains listed in

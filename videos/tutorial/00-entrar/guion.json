@@ -1,10 +1,10 @@
 {
- "cliente": "Tack Comment (demo Vallmar)",
+ "cliente": "Feedtack (demo Vallmar)",
  "titulo": "Entrar y comentar",
- "salida": "tack-00-entrar.mp4",
+ "salida": "feedtack-00-entrar.mp4",
  "almacenLocal": {
-  "tack_autor": "Núria Vallmar",
-  "tack_autor_id": "yo-nuria"
+  "feedtack_autor": "Núria Vallmar",
+  "feedtack_autor_id": "yo-nuria"
  },
  "simularApi": {
   "**/api/comentarios**": {
@@ -34,53 +34,53 @@
      "Te lo hemos mandado por correo. Entra siempre por ahí."
     ],
     "datos": [
-     "vallmar.com/?tack_yo=Nuria"
+     "vallmar.com/?feedtack_yo=Nuria"
     ]
    },
    "texto": "Te hemos mandado un enlace con tu nombre dentro. Entra siempre por ahí y tus comentarios salen firmados por ti."
   },
   {
    "id": "pestana",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
-   "foco": "#tack-host .pestana",
+   "foco": "#feedtack-host .pestana",
    "etiqueta": "La pestaña Comentar",
    "texto": "En el lado derecho de la web tienes una pestaña que pone Comentar, en todas las páginas."
   },
   {
    "id": "panel",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
-    "#tack-host .pestana"
+    "#feedtack-host .pestana"
    ],
-   "foco": "#tack-host .panel",
+   "foco": "#feedtack-host .panel",
    "etiqueta": "El panel",
    "texto": "Se abre este panel, con tu nombre ya puesto."
   },
   {
    "id": "boton-senalar",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
-    "#tack-host .pestana"
+    "#feedtack-host .pestana"
    ],
-   "foco": "#tack-host .acciones--2 button:nth-child(1)",
+   "foco": "#feedtack-host .acciones--2 button:nth-child(1)",
    "etiqueta": "Señalar elemento",
    "texto": "Lo primero es señalar de qué hablas."
   },
   {
    "id": "senalar-titular",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
-    "#tack-host .pestana",
+    "#feedtack-host .pestana",
     {
-     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+     "js": "var r=document.querySelector('#feedtack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
     },
     {
      "esperar": 900
@@ -95,13 +95,13 @@
   },
   {
    "id": "flecha-arriba",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
-    "#tack-host .pestana",
+    "#feedtack-host .pestana",
     {
-     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+     "js": "var r=document.querySelector('#feedtack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
     },
     {
      "esperar": 900
@@ -119,13 +119,13 @@
   },
   {
    "id": "senalado",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
-    "#tack-host .pestana",
+    "#feedtack-host .pestana",
     {
-     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+     "js": "var r=document.querySelector('#feedtack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
     },
     {
      "esperar": 900
@@ -135,19 +135,19 @@
      "esperar": 900
     }
    ],
-   "foco": "#tack-host .senalado",
+   "foco": "#feedtack-host .senalado",
    "etiqueta": "Queda apuntado en el panel",
    "texto": "Haz clic y se queda apuntado en el panel."
   },
   {
    "id": "escrito",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
-    "#tack-host .pestana",
+    "#feedtack-host .pestana",
     {
-     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+     "js": "var r=document.querySelector('#feedtack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
     },
     {
      "esperar": 900
@@ -157,40 +157,40 @@
      "esperar": 900
     },
     {
-     "js": "var t=document.querySelector('#tack-host').shadowRoot.querySelector('textarea');t.setAttribute('spellcheck','false')"
+     "js": "var t=document.querySelector('#feedtack-host').shadowRoot.querySelector('textarea');t.setAttribute('spellcheck','false')"
     },
     {
      "escribir": [
-      "#tack-host .cuerpo textarea",
+      "#feedtack-host .cuerpo textarea",
       "El titular tendría que hablar de rehabilitación, que es lo que más nos piden."
      ]
     }
    ],
-   "foco": "#tack-host .cuerpo textarea",
+   "foco": "#feedtack-host .cuerpo textarea",
    "etiqueta": "Lo que cambiarías, en tus palabras",
    "texto": "Escribe qué cambiarías, con tus palabras. No hace falta que nos digas cómo se hace."
   },
   {
    "id": "captura-adjuntar",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
-    "#tack-host .pestana"
+    "#feedtack-host .pestana"
    ],
-   "foco": "#tack-host .cuerpo > .acc",
+   "foco": "#feedtack-host .cuerpo > .acc",
    "etiqueta": "Captura y Adjuntar",
    "texto": "Captura hace una foto de la pantalla tal como la ves. Adjuntar sube una que ya tengas."
   },
   {
    "id": "enviar",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
-    "#tack-host .pestana",
+    "#feedtack-host .pestana",
     {
-     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+     "js": "var r=document.querySelector('#feedtack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
     },
     {
      "esperar": 900
@@ -201,24 +201,24 @@
     },
     {
      "escribir": [
-      "#tack-host .cuerpo textarea",
+      "#feedtack-host .cuerpo textarea",
       "El titular tendría que hablar de rehabilitación, que es lo que más nos piden."
      ]
     }
    ],
-   "foco": "#tack-host .enviar",
+   "foco": "#feedtack-host .enviar",
    "etiqueta": "Enviar comentario",
    "texto": "Y Enviar comentario."
   },
   {
    "id": "recibido",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
-    "#tack-host .pestana",
+    "#feedtack-host .pestana",
     {
-     "js": "var r=document.querySelector('#tack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
+     "js": "var r=document.querySelector('#feedtack-host').shadowRoot;[].slice.call(r.querySelectorAll('.acc')).filter(function(x){return x.textContent.trim().indexOf('Señalar')===0})[0].click()"
     },
     {
      "esperar": 900
@@ -229,20 +229,20 @@
     },
     {
      "escribir": [
-      "#tack-host .cuerpo textarea",
+      "#feedtack-host .cuerpo textarea",
       "El titular tendría que hablar de rehabilitación, que es lo que más nos piden."
      ]
     },
-    "#tack-host .enviar"
+    "#feedtack-host .enviar"
    ],
    "esperaAccion": 500,
-   "foco": "#tack-host .hecho",
+   "foco": "#feedtack-host .hecho",
    "etiqueta": "Recibido, gracias",
    "texto": "Nos llega con la página y el sitio exacto, así que no tienes que explicarnos dónde estabas."
   },
   {
    "id": "chincheta",
-   "url": "https://tack-comment.pages.dev/",
+   "url": "https://feedtack.pages.dev/",
    "espera": 6000,
    "sinSesion": true,
    "simularApi": {
@@ -250,7 +250,7 @@
      "comentarios": [
       {
        "id": "c1",
-       "url": "https://tack-comment.pages.dev/",
+       "url": "https://feedtack.pages.dev/",
        "ruta": "/",
        "titulo": "Vallmar Arquitectura",
        "mensaje": "El titular tendría que hablar de rehabilitación, que es lo que más nos piden.",

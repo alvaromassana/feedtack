@@ -41,7 +41,7 @@ function checked() {} function selected() {} function submit_button() {}
 function settings_fields() {} function current_user_can( $c ) { return true; }
 function delete_option( $k ) {}
 
-require __DIR__ . '/tack-comment/tack-comment.php';
+require __DIR__ . '/feedtack/feedtack.php';
 
 // ── casos
 $fallos = array();
@@ -52,9 +52,9 @@ function caso( $nombre, $estado, $ajustes, $esperado ) {
 		$estado
 	);
 	// partimos de ajustes completos: el caso "sin endpoint" se prueba explícitamente abajo
-	$base = array_merge( tack_por_defecto(), array( 'endpoint' => 'https://ejemplo.test' ) );
+	$base = array_merge( feedtack_por_defecto(), array( 'endpoint' => 'https://ejemplo.test' ) );
 	$GLOBALS['sim']['opcion'] = array_merge( $base, $ajustes );
-	$real = tack_debe_cargar();
+	$real = feedtack_debe_cargar();
 	$ok   = ( $real === $esperado );
 	printf( "  %s  %-58s esperado:%-3s real:%s\n", $ok ? 'ok ' : 'MAL', $nombre, $esperado ? 'sí' : 'no', $real ? 'sí' : 'no' );
 	if ( ! $ok ) { $fallos[] = $nombre; }
@@ -88,7 +88,7 @@ $pruebas = array(
 	array( 'endpoint http se rechaza y queda vacio', array( 'endpoint' => 'http://malo.example' ), 'endpoint', '' ),
 	array( 'endpoint javascript: se rechaza',        array( 'endpoint' => 'javascript:alert(1)' ), 'endpoint', '' ),
 	array( 'endpoint https valido se acepta',        array( 'endpoint' => 'https://mio.example' ), 'endpoint', 'https://mio.example' ),
-	array( 'script javascript: se rechaza',          array( 'script' => 'javascript:alert(1)' ),   'script',   'https://cdn.jsdelivr.net/gh/alvaromassana/tack-comment@main/widget/tack.js' ),
+	array( 'script javascript: se rechaza',          array( 'script' => 'javascript:alert(1)' ),   'script',   'https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js' ),
 	array( 'color invalido se rechaza',  array( 'color' => 'rojo; background:url(x)' ), 'color',   '#4f46e5' ),
 	array( 'color valido se acepta',     array( 'color' => '#9a6b45' ),                 'color',   '#9a6b45' ),
 	array( 'posicion inventada se rechaza', array( 'posicion' => 'centro-raro' ),       'posicion','bottom-right' ),
@@ -96,7 +96,7 @@ $pruebas = array(
 );
 foreach ( $pruebas as $p ) {
 	list( $nombre, $entrada, $campo, $esperado ) = $p;
-	$r  = tack_sanear( array_merge( tack_por_defecto(), $entrada ) );
+	$r  = feedtack_sanear( array_merge( feedtack_por_defecto(), $entrada ) );
 	$ok = ( $r[ $campo ] === $esperado );
 	printf( "  %s  %-58s %s\n", $ok ? 'ok ' : 'MAL', $nombre, $ok ? '' : "dio: '{$r[$campo]}'" );
 	if ( ! $ok ) { $fallos[] = $nombre; }

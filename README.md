@@ -1,22 +1,25 @@
-# Tack Comment
+# Feedtack
 
 **Your client points at the thing they don't like, instead of describing it in an email.**
 
+> Feedtack was called **Tack Comment** until September 2026. The old repository URL and the
+> old jsDelivr paths still resolve, so existing installs keep working.
+
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
-[![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](widget/tack.js)
+[![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](widget/feedtack.js)
 [![Runs on Cloudflare Workers](https://img.shields.io/badge/backend-Cloudflare%20Workers%20%2B%20D1-f38020.svg)](worker/)
-[![Live demo](https://img.shields.io/badge/demo-tack--comment.pages.dev-4f46e5.svg)](https://tack-comment.pages.dev)
+[![Live demo](https://img.shields.io/badge/demo-feedtack.pages.dev-4f46e5.svg)](https://feedtack.pages.dev)
 
 A floating button you drop into a site you're building, so the client can comment on what
-they see. They point at the exact element, attach a screenshot, record a voice note, and
-you get it in your inbox with the CSS selector and the browser they were using. The
+they see. They point at the exact element, attach a screenshot, and you get it in your
+inbox with the CSS selector and the browser they were using. The
 comments stay on the page as numbered pins, so everyone sees what's open and what's done.
 
 No account, no SaaS, no per-seat pricing. One `<script>` tag and a Cloudflare Worker you own.
 
 ![Pointing at an element, walking the hierarchy with the arrow keys and writing the comment](docs/img/demo.gif)
 
-**Try it:** [tack-comment.pages.dev](https://tack-comment.pages.dev) is a fake client site with
+**Try it:** [feedtack.pages.dev](https://feedtack.pages.dev) is a fake client site with
 the widget installed. Press *Comentar*, point at something, write a line. Comments written
 there are real and land in our inbox, so be nice.
 
@@ -32,7 +35,7 @@ Every agency knows this email:
 Which button. Which page. Which phone. You end up in a five-email thread to find out what
 they meant, and then you do it again next week.
 
-Tack Comment turns that into: the client clicks the element, types one line, and you get
+Feedtack turns that into: the client clicks the element, types one line, and you get
 `#services > div.grid:nth-of-type(2) > article` with a screenshot attached.
 
 There are good tools that do this (markup.io, BugHerd, Atarim, Pastel). They're
@@ -47,13 +50,13 @@ in your own Cloudflare account.
   (up and down for parent and child, left and right for siblings): the mouse only reaches
   the deepest element, and in a hero with a slider you need to choose between the photo,
   the slide and the slider.
-- **Screenshot, image attachments and voice notes** (up to 2 minutes), all in one comment.
+- **Screenshot and image attachments**, all in one comment.
 - **The comments come back.** They're stored, so the client sees what they already said,
   grouped by page, and **can edit or delete their own**. Each edit emails you the previous
   text struck through, so you don't work off a stale version.
 - **Numbered pins on the page** plus a **scrollbar ruler**: where the open work is, at a
   glance. One click hides them when they get in the way.
-- **Who asked for what.** Each reviewer gets a personal link (`?tack_yo=Name`) and every
+- **Who asked for what.** Each reviewer gets a personal link (`?feedtack_yo=Name`) and every
   comment from that browser is signed. If nobody used a link, the name is asked once and
   remembered.
 - **Every comment is a thread.** Anyone can reply, as many times as needed, and a reply can
@@ -95,9 +98,9 @@ You need a [Cloudflare](https://cloudflare.com) account (the free tier is plenty
 
 ```bash
 cd worker
-npx wrangler d1 create tack                      # copy the database_id it prints
+npx wrangler d1 create feedtack                      # copy the database_id it prints
 # paste it into wrangler.toml, then set DESTINO / REMITENTE / ORIGENES_PERMITIDOS
-npx wrangler d1 execute tack --remote --file=esquema.sql
+npx wrangler d1 execute feedtack --remote --file=esquema.sql
 npx wrangler deploy
 
 npx wrangler secret put RESEND_API_KEY                       # your Resend key
@@ -115,7 +118,7 @@ openssl rand -hex 24 | npx wrangler secret put CLAVE_ADMIN   # your team key, sa
 ### 2. Add the widget
 
 ```html
-<script src="https://cdn.jsdelivr.net/gh/alvaromassana/tack-comment@main/widget/tack.js"
+<script src="https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js"
         data-site="client-slug"
         data-endpoint="https://your-worker.workers.dev"
         data-color="#4f46e5"
@@ -136,24 +139,24 @@ automatically.
 
 ### 3. Hand out the links
 
-- **Your team**: open the site once with `?tack_admin=YOUR_KEY`. It's remembered in that
+- **Your team**: open the site once with `?feedtack_admin=YOUR_KEY`. It's remembered in that
   browser. With the key you can resolve, mark your own notes as done, reopen and delete.
-- **Each reviewer**: send them `https://staging.example.com/?tack_yo=Their%20Name`. From then
+- **Each reviewer**: send them `https://staging.example.com/?feedtack_yo=Their%20Name`. From then
   on everything they write is signed, and they can edit or delete their own comments.
   Without a link, the widget asks for a name the first time and remembers it.
 
 Without the key you can write, edit and delete your own, and confirm or reopen what's been
 resolved. Nothing else.
 
-- **Give reviewers the guide too**: [tack-comment.pages.dev/guia/](https://tack-comment.pages.dev/guia/)
-  (Spanish) and [/guia/en/](https://tack-comment.pages.dev/guia/en/) (English). Every action in
+- **Give reviewers the guide too**: [feedtack.pages.dev/guia/](https://feedtack.pages.dev/guia/)
+  (Spanish) and [/guia/en/](https://feedtack.pages.dev/guia/en/) (English). Every action in
   clips of a few seconds, same page for everyone, no sign-up. Regenerate it with
   `node qa/guia-clips.mjs` when the widget changes.
 
 ## The WordPress plugin
 
-Install `wordpress/tack-comment.zip` like any other plugin. Settings under
-**Settings → Tack Comment**: site slug, Worker endpoint, colour, button text, position and
+Install `wordpress/feedtack.zip` like any other plugin. Settings under
+**Settings → Feedtack**: site slug, Worker endpoint, colour, button text, position and
 panel language (leave it empty to follow the page's `lang`; set it when the site is written
 in one language and reviewed in another).
 
@@ -208,7 +211,7 @@ See [SECURITY.md](SECURITY.md) for the full picture.
 ## How it's built
 
 ```
-widget/tack.js   the widget. one file, no dependencies, no build step
+widget/feedtack.js   the widget. one file, no dependencies, no build step
 worker/          Cloudflare Worker + D1 + Resend
 wordpress/       WordPress plugin (source and installable zip)
 demo/            a fake client site to try it on

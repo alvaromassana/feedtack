@@ -1,4 +1,4 @@
--- Tack Comment — comentarios de revisión de webs
+-- Feedtack — comentarios de revisión de webs
 
 CREATE TABLE IF NOT EXISTS comentarios (
   id          TEXT PRIMARY KEY,

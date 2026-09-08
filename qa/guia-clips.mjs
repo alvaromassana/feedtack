@@ -16,7 +16,7 @@ import { mkdirSync, readdirSync, renameSync, rmSync, writeFileSync, existsSync }
 
 const args = process.argv.slice(2);
 const flag = (n, def) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : def; };
-const BASE = flag('--url', 'https://tack-comment.pages.dev');
+const BASE = flag('--url', 'https://feedtack.pages.dev');
 const SOLO = (flag('--solo', '') || '').split(',').filter(Boolean);
 
 const OUT = new URL('../guia/clips/', import.meta.url).pathname;
@@ -48,7 +48,7 @@ const ESCENARIO = () => [
 
 // ── interceptor: el worker entero, sin red ──────────────────────────────────
 async function simular(page, estado) {
-  await page.route('**/tack-api.odd-glade-c171.workers.dev/**', async (route) => {
+  await page.route('**/feedtack-api.odd-glade-c171.workers.dev/**', async (route) => {
     const req = route.request();
     const url = new URL(req.url());
     const m = req.method();
@@ -126,12 +126,12 @@ async function simular(page, estado) {
 }
 
 // ── utilidades de guion ─────────────────────────────────────────────────────
-const raiz = (p) => p.locator('#tack-host');
-const dentro = (p, sel) => p.locator('#tack-host').locator(sel);
+const raiz = (p) => p.locator('#feedtack-host');
+const dentro = (p, sel) => p.locator('#feedtack-host').locator(sel);
 const esperar = (p, ms) => p.waitForTimeout(ms);
 
 const listo = async (p) => {
-  await p.waitForFunction(() => !!document.querySelector('#tack-host') && !!window.Tack, null, { timeout: 20000 });
+  await p.waitForFunction(() => !!document.querySelector('#feedtack-host') && !!window.Feedtack, null, { timeout: 20000 });
   await p.waitForTimeout(700);
 };
 const mover = (p, x, y, pasos = 28) => p.mouse.move(x, y, { steps: pasos });
@@ -150,7 +150,7 @@ async function teclear(p, selector, texto, delay = 26) {
   const t = dentro(p, selector).first();
   await t.click();
   await p.evaluate(() => {
-    const r = document.querySelector('#tack-host').shadowRoot;
+    const r = document.querySelector('#feedtack-host').shadowRoot;
     r.querySelectorAll('textarea').forEach((x) => x.setAttribute('spellcheck', 'false'));
   });
   await p.keyboard.type(texto, { delay });
@@ -163,7 +163,7 @@ const CLIPS = [
     id: '01-entrar',
     // Entra por su enlace personal: el nombre ya está puesto, no se lo pedimos.
     escenario: () => [],
-    url: (b) => b + '/?tack_yo=' + encodeURIComponent(NOMBRE),
+    url: (b) => b + '/?feedtack_yo=' + encodeURIComponent(NOMBRE),
     async guion(p) {
       await esperar(p, 1400);
       const pest = dentro(p, '.pestana').first();
@@ -180,7 +180,7 @@ const CLIPS = [
     id: '02-senalar',
     escenario: () => [],
     async guion(p) {
-      await p.evaluate(() => window.Tack.escribir());
+      await p.evaluate(() => window.Feedtack.escribir());
       await esperar(p, 900);
       await pulsar(p, 'Señalar');
       await esperar(p, 700);
@@ -200,11 +200,11 @@ const CLIPS = [
   {
     id: '03-contar',
     escenario: () => [],
-    /* Sin nota de voz: está retirada de la interfaz desde el 7-sep-2026 (tack.js, la
+    /* Sin nota de voz: está retirada de la interfaz desde el 7-sep-2026 (feedtack.js, la
        línea de refs.btnVoz está comentada). El código de grabación sigue ahí, así que
        si vuelve, este clip se rehace añadiéndola. */
     async guion(p) {
-      await p.evaluate(() => window.Tack.escribir());
+      await p.evaluate(() => window.Feedtack.escribir());
       await esperar(p, 900);
       await teclear(p, 'textarea', 'El titular tendría que hablar de rehabilitación, que es lo que más nos piden.');
       await esperar(p, 1100);
@@ -216,7 +216,7 @@ const CLIPS = [
     id: '04-enviar',
     escenario: () => [],
     async guion(p) {
-      await p.evaluate(() => window.Tack.escribir());
+      await p.evaluate(() => window.Feedtack.escribir());
       await esperar(p, 700);
       await teclear(p, 'textarea', 'El titular tendría que hablar de rehabilitación.', 22);
       await esperar(p, 900);
@@ -232,7 +232,7 @@ const CLIPS = [
     id: '05-marcado',
     escenario: ESCENARIO,
     async guion(p) {
-      await p.evaluate(() => window.Tack.abrir());
+      await p.evaluate(() => window.Feedtack.abrir());
       await esperar(p, 1600);                 // chinchetas numeradas + regleta
       await pulsar(p, 'Ocultar marcadores');
       await esperar(p, 1800);
@@ -244,7 +244,7 @@ const CLIPS = [
     id: '06-historial',
     escenario: ESCENARIO,
     async guion(p) {
-      await p.evaluate(() => window.Tack.abrir());
+      await p.evaluate(() => window.Feedtack.abrir());
       await esperar(p, 900);
       await pulsar(p, 'Historial');
       await esperar(p, 1200);
@@ -266,7 +266,7 @@ const CLIPS = [
     id: '07-responder',
     escenario: ESCENARIO,
     async guion(p) {
-      await p.evaluate(() => window.Tack.verComentario('c2'));
+      await p.evaluate(() => window.Feedtack.verComentario('c2'));
       await esperar(p, 1600);
       await teclear(p, 'textarea.resp-ta, .hilo textarea', 'Me refiero a esta zona, que en el móvil se corta.', 24);
       await esperar(p, 700);
@@ -285,11 +285,11 @@ const CLIPS = [
     id: '08-cerrar-eliminar',
     escenario: ESCENARIO,
     async guion(p) {
-      await p.evaluate(() => window.Tack.verComentario('c1'));
+      await p.evaluate(() => window.Feedtack.verComentario('c1'));
       await esperar(p, 1400);
       await pulsar(p, 'Resuelto');
       await esperar(p, 2000);
-      await p.evaluate(() => window.Tack.verComentario('c2'));
+      await p.evaluate(() => window.Feedtack.verComentario('c2'));
       await esperar(p, 1200);
       await pulsar(p, 'Eliminar comentario');
       await esperar(p, 1800);                 // el aviso de que no se puede deshacer
@@ -304,11 +304,11 @@ const CLIPS = [
       cmt({ id: 'c4', mensaje: 'En el pie sigue apareciendo el teléfono antiguo.', selector: '.hero p', texto: 'Estudio en Girona', etiqueta: 'p', estado: 'resuelto', min: 90 })
     ],
     async guion(p) {
-      await p.evaluate(() => window.Tack.verComentario('c3'));
+      await p.evaluate(() => window.Feedtack.verComentario('c3'));
       await esperar(p, 1800);                 // "Lo hemos dado por arreglado"
       await pulsar(p, 'Está bien así');
       await esperar(p, 2000);
-      await p.evaluate(() => window.Tack.verComentario('c4'));
+      await p.evaluate(() => window.Feedtack.verComentario('c4'));
       await esperar(p, 1400);
       await pulsar(p, 'No, sigue mal');
       await esperar(p, 2200);
@@ -318,7 +318,7 @@ const CLIPS = [
   {
     id: 'ejemplo-1-titular',
     escenario: () => [],
-    url: (b) => b + '/?tack_yo=' + encodeURIComponent(NOMBRE),
+    url: (b) => b + '/?feedtack_yo=' + encodeURIComponent(NOMBRE),
     async guion(p) {
       await esperar(p, 1200);
       await dentro(p, '.pestana').first().click();
@@ -339,7 +339,7 @@ const CLIPS = [
   {
     id: 'ejemplo-2-foto',
     escenario: () => [],
-    url: (b) => b + '/?tack_yo=' + encodeURIComponent(NOMBRE),
+    url: (b) => b + '/?feedtack_yo=' + encodeURIComponent(NOMBRE),
     async guion(p, estado) {
       await esperar(p, 1000);
       await dentro(p, '.pestana').first().click();
@@ -359,9 +359,9 @@ const CLIPS = [
       await esperar(p, 2400);
       // y días después: nosotros lo damos por resuelto y ella lo confirma
       estado.forEach((c) => { c.estado = 'resuelto'; });
-      await p.evaluate(() => window.Tack.recargar());
+      await p.evaluate(() => window.Feedtack.recargar());
       await esperar(p, 900);
-      await p.evaluate(() => { const e = window.Tack.estado(); window.Tack.verComentario(e.comentarios[0].id); });
+      await p.evaluate(() => { const e = window.Feedtack.estado(); window.Feedtack.verComentario(e.comentarios[0].id); });
       await esperar(p, 2000);
       await pulsar(p, 'Está bien así');
       await esperar(p, 2400);
@@ -399,8 +399,8 @@ async function grabar(clip) {
   await simular(p, estado);
   // identidad fija: así "lo escribiste tú" y los botones de autor salen siempre
   await p.addInitScript(([id, nombre]) => {
-    localStorage.setItem('tack_autor_id', id);
-    localStorage.setItem('tack_autor', nombre);
+    localStorage.setItem('feedtack_autor_id', id);
+    localStorage.setItem('feedtack_autor', nombre);
   }, [YO, NOMBRE]);
 
   await p.goto(clip.url ? clip.url(BASE) : BASE + '/', { waitUntil: 'networkidle' });

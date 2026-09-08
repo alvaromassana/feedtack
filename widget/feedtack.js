@@ -1,10 +1,10 @@
 /*!
- * Tack Comment — widget de feedback para webs en construcción (Websalia)
+ * Feedtack — widget de feedback para webs en construcción (Websalia)
  * Un solo fichero, sin dependencias, aislado en Shadow DOM.
  *
- *   <script src="https://cdn.jsdelivr.net/gh/alvaromassana/tack-comment@main/widget/tack.js"
+ *   <script src="https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js"
  *           data-site="cliente-slug"
- *           data-endpoint="https://tack-api.../api"
+ *           data-endpoint="https://feedtack-api.../api"
  *           data-color="#4f46e5" defer></script>
  *
  * Se pone una vez en el pie y funciona en TODAS las páginas de la web.
@@ -35,34 +35,62 @@
   var MAX_TOTAL_BYTES = 20 * 1024 * 1024;
   var MAX_AUDIO_MS = 120000;
 
-  // La clave de administración llega por la URL (?tack_admin=...) y se queda
+  /* El producto se llamaba Tack Comment y desde el 8-sep-2026 se llama Feedtack. Lo que
+     se guarda en el navegador y lo que viaja por la URL pasa a llamarse feedtack_*, pero
+     seguimos LEYENDO los tack_* de antes, y no es cortesía: hay revisiones abiertas cuyos
+     comentarios están firmados con el id que vive bajo el nombre viejo, y enlaces
+     personales ?tack_yo= ya enviados por correo. Renombrar a secas le quitaría a quien ya
+     estaba comentando la autoría de lo suyo (y con ella, poder editarlo o borrarlo), sin
+     un solo error por ninguna parte. Los alias se retiran cuando no quede ninguna revisión
+     viva de antes del renombrado. */
+  function leer(clave) {
+    try {
+      var v = localStorage.getItem('feedtack_' + clave);
+      if (v === null || v === '') {
+        var viejo = localStorage.getItem('tack_' + clave);
+        if (viejo !== null && viejo !== '') {
+          localStorage.setItem('feedtack_' + clave, viejo);   // se migra al vuelo
+          return viejo;
+        }
+      }
+      return v;
+    } catch (e) { return null; }
+  }
+  function guardar(clave, valor) {
+    try { localStorage.setItem('feedtack_' + clave, valor); } catch (e) {}
+  }
+  function parametro(nombre) {
+    try {
+      var q = new URLSearchParams(location.search);
+      return q.get('feedtack_' + nombre) || q.get('tack_' + nombre);
+    } catch (e) { return null; }
+  }
+
+  // La clave de administración llega por la URL (?feedtack_admin=...) y se queda
   // en este navegador. Es lo que nos deja marcar cosas como resueltas.
   var CLAVE_ADMIN = (function () {
-    try {
-      var p = new URLSearchParams(location.search).get('tack_admin');
-      if (p) { localStorage.setItem('tack_admin', p); return p; }
-      return localStorage.getItem('tack_admin') || '';
-    } catch (e) { return ''; }
+    var p = parametro('admin');
+    if (p) { guardar('admin', p); return p; }
+    return leer('admin') || '';
   })();
 
-  // El nombre puede llegar por la URL (?tack_yo=Sol) y se queda en este navegador.
+  // El nombre puede llegar por la URL (?feedtack_yo=Sol) y se queda en este navegador.
   // Existe porque el campo "Tu nombre" es opcional y en la práctica se salta: con varias
   // personas revisando la misma web, saber quién pidió cada cambio es justo lo que hace
   // falta. Así cada una entra por su enlace y firma sin escribir nada.
   (function () {
-    try {
-      var y = new URLSearchParams(location.search).get('tack_yo');
-      if (y) localStorage.setItem('tack_autor', y.slice(0, 60));
-    } catch (e) {}
+    var y = parametro('yo');
+    if (y) { guardar('autor', y.slice(0, 60)); return; }
+    leer('autor');      // sin enlace personal, migra al arrancar el nombre del nombre viejo
   })();
 
   // Identidad anónima por navegador: es lo que permite editar lo propio.
   var AUTOR_ID = (function () {
     try {
-      var v = localStorage.getItem('tack_autor_id');
+      var v = leer('autor_id');
       if (!v) {
         v = 'a-' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-        localStorage.setItem('tack_autor_id', v);
+        guardar('autor_id', v);
       }
       return v;
     } catch (e) { return 'a-' + Date.now().toString(36); }
@@ -215,7 +243,7 @@
 
   /* La guía para clientes: un clip corto por acción, la misma para todos y pública con
      noindex. Va en el idioma del panel, no en el del navegador de quien la abre. */
-  var GUIA = 'https://tack-comment.pages.dev/guia/' + (IDIOMA === 'es' ? '' : 'en/');
+  var GUIA = 'https://feedtack.pages.dev/guia/' + (IDIOMA === 'es' ? '' : 'en/');
 
   /* txt('clave', valor1, valor2...) sustituye los %s por orden. */
   function txt(clave) {
@@ -754,7 +782,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
   // ------------------------------------------------------------- shadow root
 
-  var host = el('div', { id: 'tack-host' });
+  var host = el('div', { id: 'feedtack-host' });
   host.style.cssText = 'all:initial;position:static';
   var shadow = host.attachShadow({ mode: 'open' });
   shadow.appendChild(el('style', { text: CSS }));
@@ -842,11 +870,11 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
      chinchetas tapan justo lo que se está mirando y no habia forma de quitarlas sin
      cerrar el widget. Se recuerda entre paginas, que es como se usa. */
   var marcasOcultas = (function () {
-    try { return localStorage.getItem('tack_ocultar') === '1'; } catch (e) { return false; }
+    return leer('ocultar') === '1';
   })();
 
   function guardarOcultas() {
-    try { localStorage.setItem('tack_ocultar', marcasOcultas ? '1' : '0'); } catch (e) {}
+    guardar('ocultar', marcasOcultas ? '1' : '0');
   }
 
   function pintarMarcas() {
@@ -879,7 +907,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         pin.style.background = color;
         pin.style.left = Math.max(4, p.x - 13) + 'px';
         pin.style.top = Math.max(4, p.y - 13) + 'px';
-        pin.setAttribute('data-tack-pin', c.id);
+        pin.setAttribute('data-feedtack-pin', c.id);
         pin.addEventListener('click', function (ev) {
           ev.preventDefault(); ev.stopPropagation();
           abrirDetalle(c.id);
@@ -916,7 +944,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   function pintarFoco(id, p, fijo) {
     quitarFoco();
     foco = el('div', { class: fijo ? 'tk-foco tk-foco--fijo' : 'tk-foco' });
-    foco.setAttribute('data-tack-foco', id);
+    foco.setAttribute('data-feedtack-foco', id);
     foco.style.left = p.x + 'px'; foco.style.top = p.y + 'px';
     foco.style.width = p.w + 'px'; foco.style.height = p.h + 'px';
     document.body.appendChild(foco);
@@ -963,7 +991,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     pintarFoco(c.id, p, resaltadoFijo === c.id);
 
     (capaPins || []).forEach(function (pin) {
-      if (pin.getAttribute('data-tack-pin') === id) {
+      if (pin.getAttribute('data-feedtack-pin') === id) {
         pin.classList.add('tk-resaltado');
         setTimeout(function () { pin.classList.remove('tk-resaltado'); }, 2400);
       }
@@ -1053,7 +1081,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     var ayuda = el('a', { class: 'firma-ayuda', text: txt('comoFunciona'), target: '_blank', rel: 'noopener' });
     ayuda.href = GUIA;
     var a = el('a', { class: 'firma-a', text: 'Websalia', target: '_blank', rel: 'noopener' });
-    a.href = 'https://www.websalia.com/?utm_source=tack-comment&utm_medium=widget&utm_campaign=firma';
+    a.href = 'https://www.websalia.com/?utm_source=feedtack&utm_medium=widget&utm_campaign=firma';
     return el('div', { class: 'firma' }, [
       ayuda,
       el('div', { class: 'firma-hecho' }, [el('span', { text: txt('hechoPor') }), a])
@@ -1145,7 +1173,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     pintarAdjuntos();
 
     refs.autor = el('input', { type: 'text', placeholder: txt('tuNombreObl'), 'aria-label': txt('tuNombreObl') });
-    if (!borrador.autor) { try { borrador.autor = localStorage.getItem('tack_autor') || ''; } catch (e) {} }
+    if (!borrador.autor) borrador.autor = leer('autor') || '';
     refs.autor.value = borrador.autor;
     refs.autor.addEventListener('input', function () { borrador.autor = refs.autor.value; refs.autor.classList.remove('pide'); if (refs.autor.value.trim()) mostrarError(''); });
     cuerpo.appendChild(refs.autor);
@@ -1419,7 +1447,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       return mostrarError(txt('errVacio'));
     }
     var autor = '';
-    try { autor = localStorage.getItem('tack_autor') || ''; } catch (e) {}
+    autor = leer('autor') || '';
     if (!autor) { return mostrarError(txt('errQuienEres')); }
 
     boton.disabled = true; boton.textContent = txt('enviando');
@@ -1985,7 +2013,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       if (refs.autor) { refs.autor.classList.add('pide'); refs.autor.focus(); }
       return;
     }
-    try { localStorage.setItem('tack_autor', autor); } catch (e) {}
+    guardar('autor', autor);
 
     refs.enviar.disabled = true;
     refs.enviar.textContent = txt('enviando');
@@ -2102,7 +2130,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', arrancar);
   else arrancar();
 
-  window.Tack = {
+  window.Feedtack = {
     abrir: function () { vista = comentarios.length ? 'lista' : 'nuevo'; pintarPanel(); },
     escribir: function () { vista = 'nuevo'; pintarPanel(); },
     cerrar: pintarBurbuja,
@@ -2112,4 +2140,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     estado: function () { return { comentarios: comentarios, autorId: AUTOR_ID, admin: esAdmin() }; },
     config: CFG
   };
+  // El nombre viejo sigue respondiendo: hay guiones de QA y consolas abiertas que llaman
+  // window.Tack, y una línea aquí es más barata que una sorpresa a mitad de una revisión.
+  window.Tack = window.Feedtack;
 })();

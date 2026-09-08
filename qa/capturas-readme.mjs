@@ -10,20 +10,20 @@ import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index
 const { chromium } = pkg;
 import { mkdirSync, readdirSync, renameSync, rmSync } from 'fs';
 
-const BASE = process.argv[2] || 'https://tack-comment.pages.dev';
+const BASE = process.argv[2] || 'https://feedtack.pages.dev';
 const OUT = new URL('../docs/img/', import.meta.url).pathname;
 const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 mkdirSync(OUT, { recursive: true });
 
 const sh = (p, fn, arg) => p.evaluate(fn, arg);
 const acc = (p, texto) => sh(p, (t) => {
-  const r = document.querySelector('#tack-host').shadowRoot;
+  const r = document.querySelector('#feedtack-host').shadowRoot;
   const b = [...r.querySelectorAll('button, .acc, .pest')].find(x => x.textContent.trim().startsWith(t));
   if (!b) throw new Error('no hay boton ' + t);
   b.click();
 }, texto);
 const listo = async (p) => {
-  await p.waitForFunction(() => !!document.querySelector('#tack-host') && !!window.Tack, null, { timeout: 20000 });
+  await p.waitForFunction(() => !!document.querySelector('#feedtack-host') && !!window.Feedtack, null, { timeout: 20000 });
   await p.waitForTimeout(600);
 };
 const mover = async (p, x, y, pasos = 25) => { await p.mouse.move(x, y, { steps: pasos }); };
@@ -32,9 +32,9 @@ async function flujo(p, capturas) {
   await p.goto(BASE + '/', { waitUntil: 'networkidle' });
   await listo(p);
   await p.route('**/api/feedback', r => r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true,"id":"demo"}' }));
-  await sh(p, () => localStorage.setItem('tack_autor', 'Núria Vallmar'));
+  await sh(p, () => localStorage.setItem('feedtack_autor', 'Núria Vallmar'));
   await p.waitForTimeout(400);
-  await sh(p, () => window.Tack.escribir());
+  await sh(p, () => window.Feedtack.escribir());
   await p.waitForTimeout(900);
   await acc(p, 'Señalar');
   await p.waitForTimeout(600);
@@ -50,7 +50,7 @@ async function flujo(p, capturas) {
   await p.mouse.click(h1.x + 220, h1.y + 40);
   await p.waitForTimeout(900);
   await sh(p, () => {
-    const r = document.querySelector('#tack-host').shadowRoot;
+    const r = document.querySelector('#feedtack-host').shadowRoot;
     const t = r.querySelector('textarea'); t.setAttribute('spellcheck', 'false'); t.focus();
   });
   await p.keyboard.type('El titular tendría que hablar de rehabilitación, que es lo que más nos piden.', { delay: 28 });
@@ -84,7 +84,7 @@ async function flujo(p, capturas) {
   await p.route('**/api/comentarios?*', r => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(falsos) }));
   await p.goto(BASE + '/', { waitUntil: 'networkidle' });
   await listo(p);
-  await sh(p, () => window.Tack.escribir());
+  await sh(p, () => window.Feedtack.escribir());
   await p.waitForTimeout(700);
   await acc(p, 'Historial');
   await p.waitForTimeout(1500);

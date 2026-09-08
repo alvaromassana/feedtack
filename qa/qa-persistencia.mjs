@@ -22,7 +22,7 @@ await p.route('**/api/feedback', r => r.fulfill({ status: 200, contentType: 'app
 const fallos = [];
 const dentro = (fn, arg) => p.evaluate(fn, arg);
 const leer = () => dentro(() => {
-  const s = document.querySelector('#tack-host').shadowRoot;
+  const s = document.querySelector('#feedtack-host').shadowRoot;
   return {
     mensaje: s.querySelector('textarea')?.value ?? null,
     autor: s.querySelector('input[type=text]')?.value ?? null,
@@ -31,21 +31,21 @@ const leer = () => dentro(() => {
   };
 });
 const pulsar = etiqueta => dentro(t => {
-  const s = document.querySelector('#tack-host').shadowRoot;
+  const s = document.querySelector('#feedtack-host').shadowRoot;
   const b = [...s.querySelectorAll('.acc')].find(x => x.textContent.includes(t));
   if (!b) throw new Error('no existe el botón: ' + t);
   b.click();
 }, etiqueta);
 
 await p.goto(URL_DEMO, { waitUntil: 'networkidle' });
-await p.waitForFunction(() => typeof window.Tack === 'object', null, { timeout: 15000 });
-await p.evaluate(() => window.Tack.escribir());
+await p.waitForFunction(() => typeof window.Feedtack === 'object', null, { timeout: 15000 });
+await p.evaluate(() => window.Feedtack.escribir());
 await p.waitForTimeout(300);
 
 // escribir como lo haría una persona (para disparar los eventos input)
-await p.locator('#tack-host').evaluate(h => h.shadowRoot.querySelector('textarea').focus());
+await p.locator('#feedtack-host').evaluate(h => h.shadowRoot.querySelector('textarea').focus());
 await p.keyboard.type(TEXTO, { delay: 4 });
-await p.locator('#tack-host').evaluate(h => h.shadowRoot.querySelector('input[type=text]').focus());
+await p.locator('#feedtack-host').evaluate(h => h.shadowRoot.querySelector('input[type=text]').focus());
 await p.keyboard.type(NOMBRE, { delay: 4 });
 
 console.log('[1] escrito el comentario');
@@ -90,7 +90,7 @@ await p.evaluate(async () => {
   const blob = await new Promise(r => c.toBlob(r, 'image/png'));
   const dt = new DataTransfer();
   dt.items.add(new File([blob], 'prueba.png', { type: 'image/png' }));
-  const i = document.querySelector('#tack-host').shadowRoot.querySelector('input[type=file]');
+  const i = document.querySelector('#feedtack-host').shadowRoot.querySelector('input[type=file]');
   i.files = dt.files; i.dispatchEvent(new Event('change'));
 });
 await p.waitForTimeout(300);
@@ -119,7 +119,7 @@ const enviado = await p.evaluate(() => new Promise(res => {
     window.fetch = orig;
     return new Response('{"ok":true}', { status: 200 });
   };
-  document.querySelector('#tack-host').shadowRoot.querySelector('.enviar').click();
+  document.querySelector('#feedtack-host').shadowRoot.querySelector('.enviar').click();
 }));
 console.log('[5] lo que viaja al servidor:', JSON.stringify(enviado));
 if (enviado.mensaje !== TEXTO) fallos.push('el comentario no llega al servidor');

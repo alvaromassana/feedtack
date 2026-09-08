@@ -11,10 +11,10 @@ const { chromium } = pkg;
 import { mkdirSync } from 'fs';
 
 const CLAVE = process.argv[2];
-const BASE = process.argv[3] || process.env.TACK_DEMO || 'http://127.0.0.1:8791';
-const API = process.env.TACK_API || process.argv[4] || 'https://tu-worker.workers.dev';
+const BASE = process.argv[3] || process.env.FEEDTACK_DEMO || 'http://127.0.0.1:8791';
+const API = process.env.FEEDTACK_API || process.argv[4] || 'https://tu-worker.workers.dev';
 const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
-const SALIDA = '/home/alvaro/projects/tack-comment/qa/capturas';
+const SALIDA = '/home/alvaro/projects/feedtack/qa/capturas';
 if (!CLAVE) { console.error('falta la clave de administración'); process.exit(2); }
 mkdirSync(SALIDA, { recursive: true });
 
@@ -23,20 +23,20 @@ const b = await chromium.launch({ headless: true, executablePath: CHROME, args: 
 
 const nuevoCtx = () => b.newContext({ viewport: { width: 1440, height: 900 }, locale: 'es-ES' });
 const listo = async pg => {
-  await pg.waitForFunction(() => typeof window.Tack === 'object', null, { timeout: 20000 });
+  await pg.waitForFunction(() => typeof window.Feedtack === 'object', null, { timeout: 20000 });
   await pg.waitForTimeout(700);
 };
 const sh = (pg, fn, arg) => pg.evaluate(fn, arg);
-const botones = pg => sh(pg, () => [...document.querySelector('#tack-host').shadowRoot
+const botones = pg => sh(pg, () => [...document.querySelector('#feedtack-host').shadowRoot
   .querySelectorAll('.pie button, .borrar')].map(x => x.textContent.trim()));
-const chapa = pg => sh(pg, () => document.querySelector('#tack-host').shadowRoot.querySelector('.chapa')?.textContent);
-const error = pg => sh(pg, () => document.querySelector('#tack-host').shadowRoot.querySelector('.error')?.textContent || null);
+const chapa = pg => sh(pg, () => document.querySelector('#feedtack-host').shadowRoot.querySelector('.chapa')?.textContent);
+const error = pg => sh(pg, () => document.querySelector('#feedtack-host').shadowRoot.querySelector('.error')?.textContent || null);
 
 /* Esperar por condición, no por reloj: el ciclo API + recarga tarda lo que tarda. */
 async function esperarChapa(pg, esperado, ms = 20000) {
   try {
     await pg.waitForFunction(e => {
-      const s = document.querySelector('#tack-host').shadowRoot;
+      const s = document.querySelector('#feedtack-host').shadowRoot;
       return s.querySelector('.chapa')?.textContent === e || !!s.querySelector('.error');
     }, esperado, { timeout: ms });
   } catch (e) { /* lo reporta quien llama */ }
@@ -46,21 +46,21 @@ async function esperarChapa(pg, esperado, ms = 20000) {
 }
 
 async function crear(pg, texto, sel) {
-  await sh(pg, () => window.Tack.escribir());
+  await sh(pg, () => window.Feedtack.escribir());
   await pg.waitForTimeout(300);
-  await pg.locator('#tack-host').evaluate(h => h.shadowRoot.querySelector('textarea').focus());
+  await pg.locator('#feedtack-host').evaluate(h => h.shadowRoot.querySelector('textarea').focus());
   await pg.keyboard.type(texto, { delay: 2 });
-  await sh(pg, () => [...document.querySelector('#tack-host').shadowRoot.querySelectorAll('.acc')]
+  await sh(pg, () => [...document.querySelector('#feedtack-host').shadowRoot.querySelectorAll('.acc')]
     .find(x => x.textContent.includes('Señalar')).click());
   await pg.locator(sel).first().scrollIntoViewIfNeeded();
   await pg.waitForTimeout(400);
   const c = await pg.locator(sel).first().boundingBox();
   await pg.mouse.click(c.x + c.width / 2, c.y + Math.min(40, c.height / 2));
   await pg.waitForTimeout(500);
-  await sh(pg, () => document.querySelector('#tack-host').shadowRoot.querySelector('.enviar').click());
-  await pg.waitForFunction(() => !!document.querySelector('#tack-host').shadowRoot.querySelector('.hecho, .error'), null, { timeout: 25000 });
+  await sh(pg, () => document.querySelector('#feedtack-host').shadowRoot.querySelector('.enviar').click());
+  await pg.waitForFunction(() => !!document.querySelector('#feedtack-host').shadowRoot.querySelector('.hecho, .error'), null, { timeout: 25000 });
   return pg.evaluate(t => {
-    const c = window.Tack.estado().comentarios.filter(x => x.mensaje === t);
+    const c = window.Feedtack.estado().comentarios.filter(x => x.mensaje === t);
     return c.length ? c[c.length - 1].id : null;
   }, texto);
 }
@@ -69,15 +69,15 @@ async function crear(pg, texto, sel) {
 const equipo = await nuevoCtx();
 const pe = await equipo.newPage();
 pe.on('pageerror', e => fallos.push('JS equipo: ' + e.message));
-await pe.goto(BASE + '/?tack_admin=' + encodeURIComponent(CLAVE), { waitUntil: 'networkidle' });
+await pe.goto(BASE + '/?feedtack_admin=' + encodeURIComponent(CLAVE), { waitUntil: 'networkidle' });
 await listo(pe);
-if (!await sh(pe, () => window.Tack.estado().admin)) fallos.push('la clave no activó el modo equipo');
+if (!await sh(pe, () => window.Feedtack.estado().admin)) fallos.push('la clave no activó el modo equipo');
 
 console.log('[1] el equipo se deja una nota a sí mismo');
 const TXT = 'NOTA INTERNA DE PRUEBA. Recordar pedir las fotos nuevas de la fachada.';
 const ID = await crear(pe, TXT, '.hero h1');
 if (!ID) { console.error('no se pudo crear'); process.exit(1); }
-await sh(pe, id => window.Tack.verComentario(id), ID);
+await sh(pe, id => window.Feedtack.verComentario(id), ID);
 await pe.waitForTimeout(700);
 let bs = await botones(pe);
 console.log('    botones que ve:', JSON.stringify(bs));
@@ -87,7 +87,7 @@ if (!bs.some(x => /Eliminar/.test(x))) fallos.push('el equipo no ve la opción d
 await pe.screenshot({ path: `${SALIDA}/15-equipo-nota-propia.png`, clip: { x: 1000, y: 180, width: 440, height: 720 } });
 
 console.log('[2] cerrarla de un paso, sin pasar por "resuelto"');
-await sh(pe, () => [...document.querySelector('#tack-host').shadowRoot.querySelectorAll('.pie button')]
+await sh(pe, () => [...document.querySelector('#feedtack-host').shadowRoot.querySelectorAll('.pie button')]
   .find(x => x.textContent.includes('Marcar como hecha')).click());
 let est = await esperarChapa(pe, 'Cerrado');
 console.log('    estado:', est);
@@ -105,8 +105,8 @@ const pc = await cliente.newPage();
 pc.on('pageerror', e => fallos.push('JS cliente: ' + e.message));
 await pc.goto(BASE + '/', { waitUntil: 'networkidle' });
 await listo(pc);
-if (await sh(pc, () => window.Tack.estado().admin)) fallos.push('GRAVE: el cliente aparece como equipo');
-await sh(pc, id => window.Tack.verComentario(id), ID);
+if (await sh(pc, () => window.Feedtack.estado().admin)) fallos.push('GRAVE: el cliente aparece como equipo');
+await sh(pc, id => window.Feedtack.verComentario(id), ID);
 await pc.waitForTimeout(700);
 bs = await botones(pc);
 console.log('    botones que ve:', JSON.stringify(bs));
@@ -142,21 +142,21 @@ const sigue = await pc.evaluate(async ({ api }) => {
 console.log('    comentarios que siguen en la lista:', sigue);
 
 console.log('[6] el equipo elimina de verdad, con doble confirmación');
-await sh(pe, id => window.Tack.verComentario(id), ID);
+await sh(pe, id => window.Feedtack.verComentario(id), ID);
 await pe.waitForTimeout(600);
-await sh(pe, () => document.querySelector('#tack-host').shadowRoot.querySelector('.borrar').click());
+await sh(pe, () => document.querySelector('#feedtack-host').shadowRoot.querySelector('.borrar').click());
 await pe.waitForTimeout(400);
-const pideConfirmar = await sh(pe, () => !!document.querySelector('#tack-host').shadowRoot.querySelector('.confirmar'));
+const pideConfirmar = await sh(pe, () => !!document.querySelector('#feedtack-host').shadowRoot.querySelector('.confirmar'));
 console.log('    pide confirmación:', pideConfirmar);
 if (!pideConfirmar) fallos.push('elimina sin pedir confirmación');
 await pe.screenshot({ path: `${SALIDA}/16-confirmar-eliminar.png`, clip: { x: 1000, y: 180, width: 440, height: 720 } });
 
-await sh(pe, () => [...document.querySelector('#tack-host').shadowRoot.querySelectorAll('.confirmar button')]
+await sh(pe, () => [...document.querySelector('#feedtack-host').shadowRoot.querySelectorAll('.confirmar button')]
   .find(x => x.textContent.includes('Sí, eliminar')).click());
 await pe.waitForFunction(
-  () => window.Tack.estado().comentarios.filter(c => c.mensaje.startsWith('NOTA INTERNA DE PRUEBA')).length === 0,
+  () => window.Feedtack.estado().comentarios.filter(c => c.mensaje.startsWith('NOTA INTERNA DE PRUEBA')).length === 0,
   null, { timeout: 25000 }).catch(() => {});
-const quedan = await sh(pe, () => window.Tack.estado().comentarios.filter(c => c.mensaje.startsWith('NOTA INTERNA DE PRUEBA')).length);
+const quedan = await sh(pe, () => window.Feedtack.estado().comentarios.filter(c => c.mensaje.startsWith('NOTA INTERNA DE PRUEBA')).length);
 console.log('    notas de prueba que quedan:', quedan);
 if (quedan !== 0) fallos.push('no se eliminó de verdad');
 

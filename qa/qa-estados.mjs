@@ -1,5 +1,5 @@
 /**
- * QA visual del widget Tack Comment: captura cada estado por separado.
+ * QA visual del widget Feedtack: captura cada estado por separado.
  * node qa/qa-estados.mjs [url] [carpeta-salida]
  */
 import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
@@ -7,7 +7,7 @@ const { chromium } = pkg;
 import { mkdirSync } from 'fs';
 
 const URL_DEMO = process.argv[2] || 'http://127.0.0.1:8791/';
-const SALIDA = process.argv[3] || '/home/alvaro/projects/tack-comment/qa/capturas';
+const SALIDA = process.argv[3] || '/home/alvaro/projects/feedtack/qa/capturas';
 const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 
 mkdirSync(SALIDA, { recursive: true });
@@ -43,21 +43,21 @@ const shot = async (nombre, opts = {}) => {
   console.log('  capturado:', nombre);
 };
 
-console.log('QA Tack Comment —', URL_DEMO);
+console.log('QA Feedtack —', URL_DEMO);
 await p.goto(URL_DEMO, { waitUntil: 'networkidle' });
 await p.waitForTimeout(600);
 
 // --- 1. la web con la burbuja cerrada
 console.log('\n[1] burbuja cerrada');
 await shot('01-burbuja-en-la-web');
-const burbuja = p.locator('#tack-host').first();
+const burbuja = p.locator('#feedtack-host').first();
 await shot('01b-burbuja-detalle', {
   clip: { x: 1080, y: 720, width: 360, height: 180 }
 });
 
 // --- 2. panel abierto
 console.log('[2] panel abierto');
-await p.evaluate(() => window.Tack.escribir());
+await p.evaluate(() => window.Feedtack.escribir());
 await p.waitForTimeout(400);
 await shot('02-panel-abierto');
 await shot('02b-panel-detalle', { clip: { x: 1010, y: 300, width: 430, height: 600 } });
@@ -65,7 +65,7 @@ await shot('02b-panel-detalle', { clip: { x: 1010, y: 300, width: 430, height: 6
 // --- 3. modo señalar
 console.log('[3] modo senalar');
 await p.evaluate(() => {
-  const s = document.querySelector('#tack-host').shadowRoot;
+  const s = document.querySelector('#feedtack-host').shadowRoot;
   [...s.querySelectorAll('.acc')].find(b => b.textContent.includes('Señalar')).click();
 });
 await p.waitForTimeout(300);
@@ -91,7 +91,7 @@ console.log('[4] elemento senalado + adjunto');
 await p.mouse.click(objetivo.x + objetivo.width / 2, objetivo.y + 60);
 await p.waitForTimeout(400);
 await p.evaluate(() => {
-  const s = document.querySelector('#tack-host').shadowRoot;
+  const s = document.querySelector('#feedtack-host').shadowRoot;
   s.querySelector('textarea').value =
     'El titulo de esta tarjeta deberia decir "Rehabilitacion de masias", que es lo que mas nos piden. Y la foto de cabecera es de un proyecto antiguo, os paso otra.';
   s.querySelector('input[type=text]').value = 'Núria Vallmar';
@@ -107,7 +107,7 @@ await p.evaluate(async () => {
   const blob = await new Promise(r => c.toBlob(r, 'image/png'));
   const dt = new DataTransfer();
   dt.items.add(new File([blob], 'foto-fachada-nueva.png', { type: 'image/png' }));
-  const input = document.querySelector('#tack-host').shadowRoot.querySelector('input[type=file]');
+  const input = document.querySelector('#feedtack-host').shadowRoot.querySelector('input[type=file]');
   input.files = dt.files;
   input.dispatchEvent(new Event('change'));
 });
@@ -121,20 +121,20 @@ await shot('04b-relleno-detalle', { clip: { x: 1010, y: 200, width: 430, height:
 // vuelva, vuelve solo. Se DICE que se ha saltado: un caso silenciado no es un caso que pasa.
 console.log('[5] grabando voz');
 const hayVoz = await p.evaluate(() => {
-  const s = document.querySelector('#tack-host').shadowRoot;
+  const s = document.querySelector('#feedtack-host').shadowRoot;
   return [...s.querySelectorAll('.acc')].some(b => b.textContent.includes('Nota de voz'));
 });
 if (!hayVoz) {
   console.log('  SALTADO: la nota de voz no está en la interfaz');
 } else {
   await p.evaluate(() => {
-    const s = document.querySelector('#tack-host').shadowRoot;
+    const s = document.querySelector('#feedtack-host').shadowRoot;
     [...s.querySelectorAll('.acc')].find(b => b.textContent.includes('Nota de voz')).click();
   });
   await p.waitForTimeout(2200);
   await shot('05-grabando-voz', { clip: { x: 1010, y: 200, width: 430, height: 700 } });
   await p.evaluate(() => {
-    const s = document.querySelector('#tack-host').shadowRoot;
+    const s = document.querySelector('#feedtack-host').shadowRoot;
     [...s.querySelectorAll('.acc')].find(b => b.textContent.includes('Parar')).click();
   });
   await p.waitForTimeout(900);
@@ -144,7 +144,7 @@ if (!hayVoz) {
 // --- 6. enviado
 console.log('[6] enviado');
 await p.evaluate(() => {
-  document.querySelector('#tack-host').shadowRoot.querySelector('.enviar').click();
+  document.querySelector('#feedtack-host').shadowRoot.querySelector('.enviar').click();
 });
 await p.waitForTimeout(1200);
 await shot('06-enviado');
@@ -158,7 +158,7 @@ await movil.setViewportSize({ width: 390, height: 844 });
 await movil.goto(URL_DEMO, { waitUntil: 'networkidle' });
 await movil.waitForTimeout(500);
 await movil.screenshot({ path: `${SALIDA}/07-movil-burbuja.png` });
-await movil.evaluate(() => window.Tack.escribir());
+await movil.evaluate(() => window.Feedtack.escribir());
 await movil.waitForTimeout(400);
 await movil.screenshot({ path: `${SALIDA}/07b-movil-panel.png` });
 console.log('  capturado: movil');
@@ -166,19 +166,19 @@ console.log('  capturado: movil');
 // --- 8. comprobaciones duras
 console.log('\n[8] comprobaciones');
 const comp = await p.evaluate(() => {
-  const host = document.querySelector('#tack-host');
+  const host = document.querySelector('#feedtack-host');
   return {
     hostExiste: !!host,
     usaShadow: !!(host && host.shadowRoot),
     // el widget no debe filtrar estilos ni nodos al documento del cliente
-    nodosFuera: document.querySelectorAll('body > *:not(script):not(#tack-host)').length,
+    nodosFuera: document.querySelectorAll('body > *:not(script):not(#feedtack-host)').length,
     claseSenalarLimpia: !document.documentElement.classList.contains('tk-senalando'),
     restosSenalar: document.querySelectorAll('.tk-marca, .tk-etiqueta, .tk-aviso').length,
-    apiPublica: typeof window.Tack === 'object',
+    apiPublica: typeof window.Feedtack === 'object',
     // El renombrado de clases dejó una vez el CSS apuntando a la clase vieja y el
     // widget perdió el position:fixed sin que ninguna prueba se enterase.
     posicionado: (() => {
-      const r = document.querySelector('#tack-host').shadowRoot.querySelector('.tk');
+      const r = document.querySelector('#feedtack-host').shadowRoot.querySelector('.tk');
       if (!r) return 'no existe la raiz';
       const e = getComputedStyle(r);
       const caja = r.getBoundingClientRect();

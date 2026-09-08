@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for taking a look. Tack Comment is small on purpose: one widget file, one Worker,
+Thanks for taking a look. Feedtack is small on purpose: one widget file, one Worker,
 one WordPress plugin. Contributions that keep it that way are the easiest to merge.
 
 ## Before you open a pull request
@@ -20,7 +20,7 @@ one WordPress plugin. Contributions that keep it that way are the easiest to mer
 
 ```bash
 # demo in local (serve dist/, the paths are absolute)
-cp widget/tack.js dist/ && cp demo/*.html dist/
+cp widget/feedtack.js dist/ && cp demo/*.html dist/
 (cd dist && python3 -m http.server 8791 --bind 127.0.0.1)
 
 node qa/qa-estados.mjs        # visual states, exits 1 on failure
@@ -39,7 +39,7 @@ where yours lives.
 - [ ] The relevant QA script still passes, and if you changed behaviour, there's a case for it.
 - [ ] Strings exist in both `es` and `en`.
 - [ ] `CHANGELOG.md` has a line under *Unreleased*.
-- [ ] If you touched the plugin, `wordpress/tack-comment.zip` is rebuilt from `wordpress/tack-comment/`.
+- [ ] If you touched the plugin, `wordpress/feedtack.zip` is rebuilt from `wordpress/feedtack/`.
 
 ## Reporting a security issue
 
