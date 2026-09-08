@@ -1,7 +1,7 @@
 # Videotutorial de Feedtack — notas de montaje
 
 Dos vídeos, grabados sobre la **demo de Vallmar Arquitectura** (cliente ficticio:
-`https://feedtack.pages.dev`), con la skill `tutorial-video`.
+`https://feedtack.dev`), con la skill `tutorial-video`.
 
 - `00-entrar/guion.json` → `feedtack-00-entrar.mp4` (1:23) — entrar y dejar el primer comentario.
 - `01-despues/guion.json` → `feedtack-01-despues.mp4` (1:33) — lo que pasa con lo que ya has dicho.

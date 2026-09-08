@@ -33,7 +33,7 @@ Al abrirlo verás una pestaña en el lado derecho. Pulsas ahí, señalas lo que 
 lo cuentas. Nos llega al momento y te contestamos en el mismo comentario.
 
 Si quieres verlo antes, aquí está todo lo que se puede hacer en clips de unos segundos:
-https://feedtack.pages.dev/guia/
+https://feedtack.dev/guia/
 
 [GIF: ejemplo-1-titular.gif]
 
@@ -59,7 +59,7 @@ When you open it you will see a tab on the right hand side. Click there, point a
 to comment on and tell us. It reaches us straight away and we reply inside the same comment.
 
 If you would rather see it first, here is everything you can do, in clips of a few seconds:
-https://feedtack.pages.dev/guia/en/
+https://feedtack.dev/guia/en/
 
 [GIF: ejemplo-1-titular.gif]
 

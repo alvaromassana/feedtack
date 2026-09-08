@@ -41,7 +41,7 @@
   },
   {
    "id": "pestana",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "foco": "#feedtack-host .pestana",
@@ -50,7 +50,7 @@
   },
   {
    "id": "panel",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
@@ -62,7 +62,7 @@
   },
   {
    "id": "boton-senalar",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
@@ -74,7 +74,7 @@
   },
   {
    "id": "senalar-titular",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
@@ -95,7 +95,7 @@
   },
   {
    "id": "flecha-arriba",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
@@ -119,7 +119,7 @@
   },
   {
    "id": "senalado",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
@@ -141,7 +141,7 @@
   },
   {
    "id": "escrito",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
@@ -172,7 +172,7 @@
   },
   {
    "id": "captura-adjuntar",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
@@ -184,7 +184,7 @@
   },
   {
    "id": "enviar",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
@@ -212,7 +212,7 @@
   },
   {
    "id": "recibido",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 5000,
    "sinSesion": true,
    "acciones": [
@@ -242,7 +242,7 @@
   },
   {
    "id": "chincheta",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "simularApi": {
@@ -250,7 +250,7 @@
      "comentarios": [
       {
        "id": "c1",
-       "url": "https://feedtack.pages.dev/",
+       "url": "https://feedtack.dev/",
        "ruta": "/",
        "titulo": "Vallmar Arquitectura",
        "mensaje": "El titular tendría que hablar de rehabilitación, que es lo que más nos piden.",

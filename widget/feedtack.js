@@ -243,7 +243,7 @@
 
   /* La guía para clientes: un clip corto por acción, la misma para todos y pública con
      noindex. Va en el idioma del panel, no en el del navegador de quien la abre. */
-  var GUIA = 'https://feedtack.pages.dev/guia/' + (IDIOMA === 'es' ? '' : 'en/');
+  var GUIA = 'https://feedtack.dev/guia/' + (IDIOMA === 'es' ? '' : 'en/');
 
   /* txt('clave', valor1, valor2...) sustituye los %s por orden. */
   function txt(clave) {

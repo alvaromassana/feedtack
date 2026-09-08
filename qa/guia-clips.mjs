@@ -16,7 +16,7 @@ import { mkdirSync, readdirSync, renameSync, rmSync, writeFileSync, existsSync }
 
 const args = process.argv.slice(2);
 const flag = (n, def) => { const i = args.indexOf(n); return i >= 0 ? args[i + 1] : def; };
-const BASE = flag('--url', 'https://feedtack.pages.dev');
+const BASE = flag('--url', 'https://feedtack.dev');
 const SOLO = (flag('--solo', '') || '').split(',').filter(Boolean);
 
 const OUT = new URL('../guia/clips/', import.meta.url).pathname;

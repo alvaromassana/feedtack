@@ -5,12 +5,12 @@
 > Feedtack was called **Tack Comment** until September 2026. The old repository URL and the
 > old jsDelivr paths still resolve, so existing installs keep working.
 
-**Website and docs: [feedtack.pages.dev](https://feedtack.pages.dev)** · [Docs](https://feedtack.pages.dev/docs/) · [Live demo](https://feedtack.pages.dev/demo/) · [Guide for your client](https://feedtack.pages.dev/guia/)
+**Website and docs: [feedtack.dev](https://feedtack.dev)** · [Docs](https://feedtack.dev/docs/) · [Live demo](https://feedtack.dev/demo/) · [Guide for your client](https://feedtack.dev/guia/)
 
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
 [![No dependencies](https://img.shields.io/badge/dependencies-none-brightgreen.svg)](widget/feedtack.js)
 [![Runs on Cloudflare Workers](https://img.shields.io/badge/backend-Cloudflare%20Workers%20%2B%20D1-f38020.svg)](worker/)
-[![Live demo](https://img.shields.io/badge/demo-feedtack.pages.dev-4f46e5.svg)](https://feedtack.pages.dev)
+[![Live demo](https://img.shields.io/badge/demo-feedtack.dev-4f46e5.svg)](https://feedtack.dev)
 
 A floating button you drop into a site you're building, so the client can comment on what
 they see. They point at the exact element, attach a screenshot, and you get it in your
@@ -21,7 +21,7 @@ No account, no SaaS, no per-seat pricing. One `<script>` tag and a Cloudflare Wo
 
 ![Pointing at an element, walking the hierarchy with the arrow keys and writing the comment](docs/img/demo.gif)
 
-**Try it:** [feedtack.pages.dev/demo/](https://feedtack.pages.dev/demo/) is a fake client site with
+**Try it:** [feedtack.dev/demo/](https://feedtack.dev/demo/) is a fake client site with
 the widget installed. Press *Comentar*, point at something, write a line. Comments written
 there are real and land in our inbox, so be nice.
 
@@ -150,8 +150,8 @@ automatically.
 Without the key you can write, edit and delete your own, and confirm or reopen what's been
 resolved. Nothing else.
 
-- **Give reviewers the guide too**: [feedtack.pages.dev/guia/](https://feedtack.pages.dev/guia/)
-  (Spanish) and [/guia/en/](https://feedtack.pages.dev/guia/en/) (English). Every action in
+- **Give reviewers the guide too**: [feedtack.dev/guia/](https://feedtack.dev/guia/)
+  (Spanish) and [/guia/en/](https://feedtack.dev/guia/en/) (English). Every action in
   clips of a few seconds, same page for everyone, no sign-up. Regenerate it with
   `node qa/guia-clips.mjs` when the widget changes.
 

@@ -5,7 +5,7 @@
 import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
 const { chromium } = pkg;
 
-const URL_DEMO = process.argv[2] || 'https://feedtack.pages.dev/';
+const URL_DEMO = process.argv[2] || 'https://feedtack.dev/';
 const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 
 const b = await chromium.launch({ headless: true, executablePath: CHROME, args: ['--no-sandbox'] });

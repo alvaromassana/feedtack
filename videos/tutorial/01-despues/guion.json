@@ -11,7 +11,7 @@
    "comentarios": [
     {
      "id": "c1",
-     "url": "https://feedtack.pages.dev/",
+     "url": "https://feedtack.dev/",
      "ruta": "/",
      "titulo": "Vallmar Arquitectura",
      "mensaje": "El titular tendría que hablar de rehabilitación, que es lo que más nos piden.",
@@ -38,7 +38,7 @@
     },
     {
      "id": "c2",
-     "url": "https://feedtack.pages.dev/",
+     "url": "https://feedtack.dev/",
      "ruta": "/",
      "titulo": "Vallmar Arquitectura",
      "mensaje": "Esta foto se ve rara en el móvil, se corta por arriba. Os adjunto captura.",
@@ -83,7 +83,7 @@
   },
   {
    "id": "historial",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "acciones": [
@@ -95,7 +95,7 @@
   },
   {
    "id": "abrir",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "acciones": [
@@ -111,7 +111,7 @@
   },
   {
    "id": "editar",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "acciones": [
@@ -131,7 +131,7 @@
   },
   {
    "id": "responder",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "acciones": [
@@ -156,7 +156,7 @@
   },
   {
    "id": "ocultar",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "acciones": [
@@ -168,7 +168,7 @@
   },
   {
    "id": "resuelto",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "acciones": [
@@ -187,7 +187,7 @@
   },
   {
    "id": "eliminar",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "acciones": [
@@ -210,7 +210,7 @@
   },
   {
    "id": "confirmar",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "acciones": [
@@ -233,7 +233,7 @@
   },
   {
    "id": "cierre",
-   "url": "https://feedtack.pages.dev/",
+   "url": "https://feedtack.dev/",
    "espera": 6000,
    "sinSesion": true,
    "foco": ".hero h1",

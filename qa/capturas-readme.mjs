@@ -10,7 +10,7 @@ import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index
 const { chromium } = pkg;
 import { mkdirSync, readdirSync, renameSync, rmSync } from 'fs';
 
-const BASE = process.argv[2] || 'https://feedtack.pages.dev';
+const BASE = process.argv[2] || 'https://feedtack.dev';
 const OUT = new URL('../docs/img/', import.meta.url).pathname;
 const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 mkdirSync(OUT, { recursive: true });
