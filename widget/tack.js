@@ -89,6 +89,7 @@
       invitaSi: 'Señalar dónde', invitaNo: 'Enviar sin señalar',
       nivelAyuda: 'para subir o bajar de elemento', nivelHermanos: 'para ir al de al lado',
       hechoPor: 'Hecho por ',
+      comoFunciona: '¿Cómo funciona?',
       ocultarMarcas: 'Ocultar marcadores de feedback', resaltarFijo: 'Resaltar selección de feedback', sinSenalar: 'Este comentario no señalaba ningún elemento, así que no hay sitio al que ir.',
       errQuienEres: 'Pon tu nombre, para que sepamos de quién es cada comentario. Solo esta vez.',
       tuNombreObl: 'Tu nombre',
@@ -152,6 +153,7 @@
       invitaSi: 'Point at it', invitaNo: 'Send without pointing',
       nivelAyuda: 'to go up or down a level', nivelHermanos: 'to move sideways',
       hechoPor: 'Made by ',
+      comoFunciona: 'How does this work?',
       ocultarMarcas: 'Hide feedback markers', resaltarFijo: 'Highlight the selected area', sinSenalar: 'This comment did not point at any element, so there is nowhere to go.',
       errQuienEres: 'Add your name, so we know who each comment is from. Just this once.',
       tuNombreObl: 'Your name',
@@ -210,6 +212,10 @@
   })();
 
   var T = TEXTOS[IDIOMA];
+
+  /* La guía para clientes: un clip corto por acción, la misma para todos y pública con
+     noindex. Va en el idioma del panel, no en el del navegador de quien la abre. */
+  var GUIA = 'https://tack-comment.pages.dev/guia/' + (IDIOMA === 'es' ? '' : 'en/');
 
   /* txt('clave', valor1, valor2...) sustituye los %s por orden. */
   function txt(clave) {
@@ -564,6 +570,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 .firma { padding: 10px 16px 13px; margin-top: 2px; text-align: center; font-size: 11px; line-height: 1.4; color: #64748b; border-top: 1px solid #1e293b; }
 .firma a { color: #94a3b8; text-decoration: none; font-weight: 600; }
 .firma a:hover { color: var(--acento); text-decoration: underline; }
+.firma-ayuda { display: block; margin-bottom: 5px; font-size: 12px; color: #94a3b8; }
+.firma-hecho { opacity: .85; }
 .pie { display: flex; align-items: center; gap: 8px; }
 .nota { font-size: 11px; color: #64748b; text-align: center; }
 .error { font-size: 12px; color: #fca5a5; background: rgba(239,68,68,.12); border: 1px solid rgba(239,68,68,.3); border-radius: 8px; padding: 8px 10px; }
@@ -1038,11 +1046,18 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   }
 
   /* Firma discreta. Quien usa esto es un cliente mirando SU web, no el nuestro:
-     va al pie, en gris y pequeña, y nunca compite con el comentario que va a escribir. */
+     va al pie, en gris y pequeña, y nunca compite con el comentario que va a escribir.
+     Encima, el enlace a la guía: es lo único que un cliente nuevo puede necesitar y por
+     eso está siempre a la vista, pero en el pie, que no es donde va a mirar quien ya sabe. */
   function firma() {
+    var ayuda = el('a', { class: 'firma-ayuda', text: txt('comoFunciona'), target: '_blank', rel: 'noopener' });
+    ayuda.href = GUIA;
     var a = el('a', { class: 'firma-a', text: 'Websalia', target: '_blank', rel: 'noopener' });
     a.href = 'https://www.websalia.com/?utm_source=tack-comment&utm_medium=widget&utm_campaign=firma';
-    return el('div', { class: 'firma' }, [el('span', { text: txt('hechoPor') }), a]);
+    return el('div', { class: 'firma' }, [
+      ayuda,
+      el('div', { class: 'firma-hecho' }, [el('span', { text: txt('hechoPor') }), a])
+    ]);
   }
 
   function cabecera() {
