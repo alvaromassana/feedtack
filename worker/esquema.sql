@@ -53,3 +53,39 @@ CREATE TABLE IF NOT EXISTS respuestas (
   FOREIGN KEY (comentario) REFERENCES comentarios(id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_resp_comentario ON respuestas (comentario, creado);
+
+-- Cola de avisos por tanda (8-sep-2026). Antes salía un correo por cada cosa que
+-- pasaba; ahora el primer evento de una web abre una ventana y al cerrarse sale UN
+-- correo con todo lo que haya caído dentro.
+--
+-- La cola vive en D1 y no en el almacén del Durable Object a propósito: así se puede
+-- mirar con `wrangler d1 execute` cuando algo no llega, y un aviso que falló sigue
+-- ahí (lo recoge la tanda siguiente) en vez de desaparecer.
+--
+-- Los adjuntos NO caben aquí: van a R2 y esta fila guarda solo su clave, su nombre y
+-- su tamaño. Es la consecuencia de diferir: antes el fichero viajaba directo al correo
+-- y no se guardaba en ningún sitio (`n_adjuntos` era solo un contador).
+CREATE TABLE IF NOT EXISTS avisos_pendientes (
+  id         TEXT PRIMARY KEY,
+  site       TEXT NOT NULL,
+  tipo       TEXT NOT NULL,              -- nuevo | respuesta | editado | reabierto
+  comentario TEXT,                       -- a qué comentario se refiere (para agrupar en el correo)
+  payload    TEXT NOT NULL,              -- JSON del aviso SIN los binarios
+  adjuntos   TEXT NOT NULL DEFAULT '[]', -- JSON: [{clave, nombre, tipo, bytes}] en R2
+  creado     TEXT NOT NULL,
+  enviado    TEXT,                       -- NULL = pendiente. Fecha ISO cuando salió
+  intentos   INTEGER NOT NULL DEFAULT 0, -- a partir de 5 se manda sin adjuntos (uno grande no puede bloquear la cola)
+
+  -- 🔒 Las dos columnas de RESERVA, y no son adorno: sin ellas el mismo correo puede
+  -- salir DOS veces. Dentro de un Durable Object, un `await` que no sea de su almacén
+  -- (D1, R2, Resend) NO bloquea la entrada de eventos nuevos, así que el corte por
+  -- número puede volver a entrar mientras la tanda anterior está subiendo a Resend y
+  -- leer las mismas filas, que todavía no están marcadas. La reserva es un UPDATE
+  -- atómico: quien se lleva las filas es quien las manda, y nadie más las ve.
+  -- Una reserva de hace más de 15 minutos se considera muerta (el worker se cayó a
+  -- mitad del envío) y se vuelve a coger.
+  reclamo    TEXT,                       -- identificador de quien la tiene en vuelo
+  reclamado  TEXT                        -- cuándo la cogió (ISO)
+);
+CREATE INDEX IF NOT EXISTS idx_avisos_pend ON avisos_pendientes (site, enviado, creado);
+CREATE INDEX IF NOT EXISTS idx_avisos_reclamo ON avisos_pendientes (reclamo);

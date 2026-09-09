@@ -9,12 +9,34 @@ DESTINO = "tu@correo.com"
 REMITENTE = "Feedtack <feedtack@tudominio.com>"
 # Orígenes autorizados a enviar comentarios (CORS). Uno por dominio de revisión.
 ORIGENES_PERMITIDOS = "https://staging.tucliente.com,http://localhost:8791"
+# Agrupación de avisos: el primer comentario abre la ventana y al cerrarse sale UN correo
+# con todo lo que haya caído. El corte por número es el seguro de una tanda muy viva.
+VENTANA_MINUTOS = "10"
+CORTE_COMENTARIOS = "10"
+# De dónde se descargan las capturas que no caben en el correo. Tiene que ser una URL
+# que responda a este worker; si se deja vacía, los adjuntos van sin enlace.
+BASE_PUBLICA = ""
 
 [[d1_databases]]
 binding = "DB"
 database_name = "feedtack"
 database_id = "PON_AQUI_EL_TUYO"   # lo da: wrangler d1 create feedtack
 
+# Las capturas se guardan aquí porque un correo diferido no puede llevarlas en la mano.
+[[r2_buckets]]
+binding = "ADJUNTOS"
+bucket_name = "feedtack-adjuntos"   # lo da: wrangler r2 bucket create feedtack-adjuntos
+
+# Un reloj por web. Sin sondeo: con nadie comentando no se ejecuta nada.
+[[durable_objects.bindings]]
+name = "TANDAS_DO"
+class_name = "Tandas"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Tandas"]
+
 # Secrets (wrangler secret put ...):
 #   RESEND_API_KEY   clave de Resend
 #   CLAVE_ADMIN      la que nos deja marcar un comentario como resuelto
+#   TANDAS           ponla a "no" para volver a un correo por evento sin desplegar código
