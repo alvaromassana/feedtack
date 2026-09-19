@@ -189,6 +189,35 @@ outgrow them, you are the one who decides whether to pay, and to whom. We never 
 
 ### 2. Add the widget
 
+**Two ways in, pick one:**
+
+| Your site | What to do | Why |
+|---|---|---|
+| **WordPress** | Install the plugin, [step 2a](#2a-on-wordpress-install-the-plugin) | A settings screen instead of editing templates, and it refuses to load on a production site |
+| **Anything else** | Paste the tag, [step 2b](#2b-anywhere-else-paste-the-tag) | Astro, Eleventy, Hugo, React, Next, Vue, plain HTML, Shopify, Squarespace, Wix |
+
+The plugin and the tag load exactly the same widget and talk to the same Worker. Nothing else
+in this guide changes depending on which one you choose.
+
+#### 2a. On WordPress: install the plugin
+
+Download
+[`wordpress/feedtack.zip`](https://github.com/alvaromassana/feedtack/releases/latest) and
+install it like any other plugin. The widget file travels inside the zip, so the plugin has no
+external dependency. Settings live under **Settings -> Feedtack**: site slug, Worker endpoint,
+colour, button text, position and panel language.
+
+🔒 **The plugin will not load on a production site** unless you tick the override box on
+purpose, and it never loads in the dashboard, in ajax requests, in cron or in feeds. That
+guardrail is the reason to prefer it on WordPress. Full detail in
+[The WordPress plugin](#the-wordpress-plugin) below; you can skip step 2b.
+
+#### 2b. Anywhere else: paste the tag
+
+🔴 **There is no production guardrail here.** The widget file has no idea which site it is on,
+so the tag loads whenever it is present. On a live site every visitor would see the button,
+write comments and read everyone else's. Removing the tag before you go live is on you.
+
 **Host the file yourself.** Copy `widget/feedtack.js` (103 KB, 28 KB gzipped, zero dependencies)
 next to your site's other assets and point the tag at your own copy:
 

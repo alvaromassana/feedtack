@@ -35,6 +35,7 @@
     <p>Contents</p>
     <a href="#backend">1. Your backend</a>
     <a href="#widget">2. The widget</a>
+    <a href="#wordpress">&nbsp;&nbsp;&rarr; on WordPress</a>
     <a href="#enlaces">3. The links</a>
     <a href="#wordpress">WordPress plugin</a>
     <a href="#correo">What you receive</a>
@@ -136,6 +137,23 @@ openssl rand -hex 24 | npx wrangler secret put CLAVE_ADMIN   <span class="eco">#
 
     <section id="widget">
       <h2>2. Add the widget</h2>
+      <p><strong>Two ways in, pick one:</strong></p>
+      <table>
+        <tr><th>Your site</th><th>What to do</th><th>Why</th></tr>
+        <tr><td><strong>WordPress</strong></td><td><a href="#wordpress">Install the plugin</a></td>
+          <td>A settings screen instead of editing templates, and it refuses to load on a production site.</td></tr>
+        <tr><td><strong>Anything else</strong></td><td>Paste the tag, below</td>
+          <td>Astro, Eleventy, Hugo, React, Next, Vue, plain HTML, Shopify, Squarespace, Wix.</td></tr>
+      </table>
+      <p>The plugin and the tag load exactly the same widget and talk to the same Worker. Nothing else
+        in this guide changes depending on which one you choose. On WordPress you can
+        <a href="#wordpress">jump to the plugin</a> and skip the rest of this section.</p>
+
+      <h3>Paste the tag</h3>
+      <p class="aviso">🔴 <b>There is no production guardrail here.</b> The widget file has no idea
+        which site it is on, so the tag loads whenever it is present. On a live site every visitor
+        would see the button, write comments and read everyone else's. Removing the tag before you go
+        live is on you. The WordPress plugin is the one that has the lock.</p>
       <p><strong>Host the file yourself.</strong> Copy <code>widget/feedtack.js</code> (103 KB,
         28 KB gzipped, zero dependencies) next to your site's other assets and point the tag at
         your own copy:</p>
@@ -187,8 +205,12 @@ openssl rand -hex 24 | npx wrangler secret put CLAVE_ADMIN   <span class="eco">#
 
     <section id="wordpress">
       <h2>The WordPress plugin</h2>
-      <p><a href="https://github.com/alvaromassana/feedtack/raw/main/wordpress/feedtack.zip">Download
-        <code>feedtack.zip</code></a> and install it like any other plugin. Settings live under
+      <p>This is the recommended route on WordPress, and it replaces step 2: you do not paste any
+        tag.</p>
+      <p><a href="https://github.com/alvaromassana/feedtack/releases/latest">Download
+        <code>feedtack.zip</code></a> and install it like any other plugin. The widget file travels
+        inside the zip and is served from your own site, so the plugin has no external dependency.
+        Settings live under
         <b>Settings → Feedtack</b>: site slug, Worker endpoint, colour, button text, position and panel
         language. Leave the language empty to follow the page's <code>lang</code>, and set it when the
         site is written in one language and reviewed in another.</p>
