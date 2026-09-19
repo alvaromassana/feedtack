@@ -27,13 +27,32 @@ function feedtack_por_defecto() {
 		'activo'      => 1,
 		'site'        => sanitize_title( get_bloginfo( 'name' ) ),
 		'endpoint'    => '',   // sin valor: cada quien apunta al suyo
-		'script'      => 'https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js',
+		'script'      => '',   // vacio = la copia que viaja DENTRO del plugin
 		'color'       => '#4f46e5',
 		'label'       => 'Comentar',
 		'posicion'    => 'borde-derecho',
 		'idioma'      => '',   // Websalia 2026-09-07: vacio = lo decide el lang de la pagina
 		'en_produccion' => 0,
 	);
+}
+
+/**
+ * De donde sale el fichero del widget.
+ *
+ * 🔒 Por defecto, de DENTRO del plugin. Antes el valor por defecto era la URL de jsDelivr
+ * apuntando a @main, asi que cada web instalada seguia en vivo la rama principal del repo:
+ * un push roto alla rompia el widget aqui. La copia local no depende de nadie.
+ *
+ * 🔴 No se guarda la URL local en las opciones: plugins_url() cambia si la web cambia de
+ * dominio o de carpeta, y una URL absoluta guardada se quedaria apuntando al sitio viejo.
+ * Se resuelve en cada carga.
+ */
+function feedtack_url_script() {
+	$a = feedtack_ajustes();
+	if ( ! empty( $a['script'] ) ) {
+		return $a['script'];
+	}
+	return plugins_url( 'feedtack.js', __FILE__ );
 }
 
 function feedtack_ajustes() {
@@ -54,7 +73,7 @@ function feedtack_debe_cargar() {
 	if ( empty( $a['activo'] ) ) {
 		return false;
 	}
-	if ( empty( $a['site'] ) || empty( $a['endpoint'] ) || empty( $a['script'] ) ) {
+	if ( empty( $a['site'] ) || empty( $a['endpoint'] ) ) {
 		return false;
 	}
 	// Nada en el escritorio, ni en peticiones internas, ni en feeds.
@@ -89,7 +108,7 @@ function feedtack_pintar() {
 
 	printf(
 		'<script src="%s?v=%s" data-site="%s" data-endpoint="%s" data-color="%s" data-label="%s" data-position="%s" data-lang="%s" defer></script>' . "\n",
-		esc_url( $a['script'] ),
+		esc_url( feedtack_url_script() ),
 		esc_attr( FEEDTACK_VERSION ),
 		esc_attr( $a['site'] ),
 		esc_url( $a['endpoint'] ),
@@ -152,7 +171,8 @@ function feedtack_sanear( $entrada ) {
 		$url = isset( $entrada[ $campo ] ) ? esc_url_raw( trim( $entrada[ $campo ] ) ) : '';
 		// Solo https: el widget viaja con el comentario del cliente.
 		$salida[ $campo ] = ( $url && 0 === strpos( $url, 'https://' ) ) ? $url : $d[ $campo ];
-		if ( 'endpoint' === $campo && ! $url ) { $salida[ $campo ] = ''; }
+		// Los dos admiten vacio: el endpoint apaga el widget, el script usa la copia local.
+		if ( ! $url ) { $salida[ $campo ] = ''; }
 	}
 
 	$color = isset( $entrada['color'] ) ? sanitize_hex_color( trim( $entrada['color'] ) ) : '';
@@ -246,7 +266,8 @@ function feedtack_pagina_ajustes() {
 				<tr>
 					<th scope="row"><label for="feedtack_script">Fichero del widget</label></th>
 					<td>
-						<input type="url" id="feedtack_script" class="regular-text code" name="<?php echo esc_attr( FEEDTACK_OPCION ); ?>[script]" value="<?php echo esc_attr( $a['script'] ); ?>">
+						<input type="url" id="feedtack_script" class="regular-text code" name="<?php echo esc_attr( FEEDTACK_OPCION ); ?>[script]" value="<?php echo esc_attr( $a['script'] ); ?>" placeholder="<?php echo esc_attr( plugins_url( 'feedtack.js', __FILE__ ) ); ?>">
+						<p class="description">Déjalo vacío y se usa la copia que viene dentro del plugin, que es lo recomendado: así esta web no depende de ningún repositorio ni CDN de nadie. Ponle una URL solo si quieres servir el fichero desde otro sitio.</p>
 					</td>
 				</tr>
 				<tr>

@@ -136,12 +136,14 @@
 
   <section id="install">
     <h2>One tag</h2>
-    <pre><code>&lt;script src="https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js"
+    <pre><code>&lt;script src="/feedtack.js"
         data-site="client-slug"
         data-endpoint="https://your-worker.workers.dev"
         data-color="#4f46e5" defer&gt;&lt;/script&gt;</code></pre>
-    <p>You still need a backend of your own, which is a Cloudflare Worker plus a D1 database and takes
-      about ten minutes. <a href="/docs/">The docs walk through it</a>.</p>
+    <p>You copy <code>widget/feedtack.js</code> into your own site, so nothing on your clients' pages
+      depends on a repository or a CDN of ours staying up. You also need a backend of your own: a
+      Cloudflare Worker with a D1 database and an R2 bucket, about twenty minutes the first time.
+      <a href="/docs/">The docs walk through it from scratch</a>.</p>
   </section>
 
   <section id="guia">

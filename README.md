@@ -93,39 +93,127 @@ site's CSS can't break it. Anywhere you can put a `<script>` tag:
 
 ## Quick start
 
-### 1. Deploy your own backend (about ten minutes)
+### 1. Deploy your own backend (about twenty minutes the first time)
 
-You need a [Cloudflare](https://cloudflare.com) account (the free tier is plenty) and a
-[Resend](https://resend.com) API key for the emails.
+The backend is a Cloudflare Worker that **you own and deploy**. Nothing runs on our servers and
+nothing is billed to us: your comments, your database, your attachments, your email account.
+
+#### What you need first
+
+| | What | Cost |
+|---|---|---|
+| 1 | A **[Cloudflare](https://dash.cloudflare.com/sign-up) account**. Sign up with an email, no card needed to start. | Free tier |
+| 2 | **An R2 subscription** on that account. In Cloudflare's words: *Storage & databases > R2 > Overview*, then complete the checkout flow. It is a checkout, not a bill: the free allowance below still applies. | Free tier |
+| 3 | A **[Resend](https://resend.com) account** with a verified sending domain, and an API key. Resend is what actually delivers the notification emails. | Free tier |
+| 4 | **Node.js 18 or newer** on your machine, to run `wrangler` (Cloudflare's CLI). You do not install it globally: `npx` fetches it. | Free |
+
+You can use any other transactional email provider, but you would have to change
+`enviarCorreo()` in `worker/src/index.js`. Out of the box it is Resend.
+
+#### Get the code and log in
 
 ```bash
-cd worker
-npx wrangler d1 create feedtack                      # copy the database_id it prints
-# paste it into wrangler.toml, then set DESTINO / REMITENTE / ORIGENES_PERMITIDOS
+git clone https://github.com/alvaromassana/feedtack.git
+cd feedtack/worker
+npx wrangler login          # opens the browser and links the CLI to your account
+```
+
+#### Create the three pieces of storage
+
+The Worker needs three Cloudflare resources. **Create all three before deploying**: `wrangler
+deploy` reads `wrangler.toml`, and a binding pointing at something that does not exist will
+stop the deploy.
+
+```bash
+# 1. The database, where the comments live
+npx wrangler d1 create feedtack          # copy the database_id it prints
+
+# 2. The bucket, where the screenshots live
+npx wrangler r2 bucket create feedtack-adjuntos
+```
+
+The third one, the **Durable Object** that batches the notifications, needs no command: the
+migration already declared in `wrangler.toml` creates it on the first deploy.
+
+#### Fill in wrangler.toml
+
+Open `worker/wrangler.toml` and set:
+
+| Field | What to put |
+|---|---|
+| `database_id` | The id that `d1 create` printed |
+| `DESTINO` | The address the comments are emailed to, normally yours |
+| `REMITENTE` | The sender, on a domain you verified in Resend, e.g. `Feedtack <feedtack@youragency.com>` |
+| `ORIGENES_PERMITIDOS` | Comma-separated list of the sites allowed to send comments, e.g. `https://staging.client.com,https://client.pages.dev`. Wildcards like `*.pages.dev` work. Anything else is blocked by CORS, on purpose. |
+| `BASE_PUBLICA` | Your Worker's own URL, so screenshots too big for the email get a download link. Leave it empty and the attachments simply travel without a link. You will only know the URL after the first deploy, so fill this one in and deploy again. |
+
+`VENTANA_MINUTOS` and `CORTE_COMENTARIOS` control how comments are grouped into one email.
+The defaults are sensible; leave them alone until the volume tells you otherwise.
+
+#### Create the tables, deploy, and set the secrets
+
+```bash
 npx wrangler d1 execute feedtack --remote --file=esquema.sql
-npx wrangler deploy
+npx wrangler deploy                                          # prints your Worker's URL
 
 npx wrangler secret put RESEND_API_KEY                       # your Resend key
 openssl rand -hex 24 | npx wrangler secret put CLAVE_ADMIN   # your team key, save it
 ```
 
-| Variable | What for |
-|---|---|
-| `DESTINO` | Where the comments are emailed to |
-| `REMITENTE` | The sender address, on a domain verified in Resend |
-| `ORIGENES_PERMITIDOS` | Comma-separated allowlist of sites that may send comments. Wildcards like `*.pages.dev` work. Anything else is blocked by CORS, on purpose. |
+Now put that Worker URL into `BASE_PUBLICA` in `wrangler.toml` and run `npx wrangler deploy`
+once more.
 
-`GET /salud` on your Worker returns `{"ok":true}` when it's up.
+#### Check it is up
+
+```bash
+curl https://your-worker.workers.dev/salud      # {"ok":true}
+```
+
+If you get anything else, the usual suspects are a `database_id` that was not pasted in, the
+R2 bucket not created, or the schema not run against `--remote`.
+
+#### What this costs you, in practice
+
+A review tool moves a handful of comments a day, so the free tiers are not a constraint.
+Checked against the providers' own pricing pages on 19 September 2026:
+
+| Free allowance | Limit |
+|---|---|
+| Cloudflare Workers | 100,000 requests / day |
+| Cloudflare D1 | 5 GB stored, 5 million rows read / day, 100,000 rows written / day |
+| Cloudflare R2 | 10 GB stored / month, egress free |
+| Resend | 3,000 emails / month, 100 / day |
+
+An agency with thirty client sites under review will not get near any of those. If you ever do
+outgrow them, you are the one who decides whether to pay, and to whom. We never see any of it.
 
 ### 2. Add the widget
 
+**Host the file yourself.** Copy `widget/feedtack.js` (103 KB, 28 KB gzipped, zero dependencies)
+next to your site's other assets and point the tag at your own copy:
+
 ```html
-<script src="https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js"
+<script src="/feedtack.js"
         data-site="client-slug"
         data-endpoint="https://your-worker.workers.dev"
         data-color="#4f46e5"
         defer></script>
 ```
+
+This is the recommended way and it is what makes the install genuinely yours: your site stops
+depending on anyone else's repository or CDN staying up, and an update only happens when you
+decide to copy a new file.
+
+If you would rather not host it, jsDelivr serves it straight from this repository:
+
+```html
+<script src="https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js" ...
+```
+
+> ⚠️ `@main` tracks this repository's main branch, so your clients' sites pick up our changes
+> the moment we push them, including the broken ones. If you use the CDN, pin it to a release
+> tag (`@v<version>`, see [releases](https://github.com/alvaromassana/feedtack/releases))
+> rather than `@main`.
 
 | Attribute | What for | Default |
 |---|---|---|
@@ -136,8 +224,7 @@ openssl rand -hex 24 | npx wrangler secret put CLAVE_ADMIN   # your team key, sa
 | `data-position` | `borde-derecho` (a tab on the right edge), `bottom-right`, `bottom-left`, `top-right` | `borde-derecho` |
 | `data-lang` | `es` or `en`, overrides the page's `lang` | auto |
 
-Pin the URL to a release (`@v0.1.0`) instead of `@main` if you don't want to pick up changes
-automatically.
+The `data-*` table above applies to the self-hosted copy and to the CDN alike.
 
 ### 3. Hand out the links
 

@@ -28,6 +28,7 @@ function wp_parse_args( $a, $d ) { return array_merge( $d, is_array( $a ) ? $a :
 function sanitize_title( $s ) { return strtolower( preg_replace( '/[^a-z0-9-]+/i', '-', $s ) ); }
 function get_bloginfo( $x ) { return 'Cliente Ejemplo'; }
 function apply_filters( $t, $v ) { return $v; }
+function plugins_url( $f, $base ) { return 'https://ejemplo.test/wp-content/plugins/feedtack/' . $f; }
 function add_action() {} function add_filter() {} function add_options_page() {}
 function register_setting() {} function register_uninstall_hook() {}
 function plugin_basename( $f ) { return basename( $f ); }
@@ -80,7 +81,7 @@ caso( 'feed rss: NO carga',                          array( 'entorno' => 'stagin
 echo "\nAjustes incompletos\n";
 caso( 'sin identificador de cliente: NO carga',      array( 'entorno' => 'staging' ), array( 'site' => '' ), false );
 caso( 'sin servidor configurado: NO carga',          array( 'entorno' => 'staging' ), array( 'endpoint' => '' ), false );
-caso( 'sin fichero de widget: NO carga',             array( 'entorno' => 'staging' ), array( 'script' => '' ), false );
+caso( 'sin URL de widget SI carga (usa la copia local)', array( 'entorno' => 'staging' ), array( 'script' => '' ), true );
 
 // ── saneado de la entrada
 echo "\nSaneado de lo que se escribe en el formulario\n";
@@ -88,7 +89,8 @@ $pruebas = array(
 	array( 'endpoint http se rechaza y queda vacio', array( 'endpoint' => 'http://malo.example' ), 'endpoint', '' ),
 	array( 'endpoint javascript: se rechaza',        array( 'endpoint' => 'javascript:alert(1)' ), 'endpoint', '' ),
 	array( 'endpoint https valido se acepta',        array( 'endpoint' => 'https://mio.example' ), 'endpoint', 'https://mio.example' ),
-	array( 'script javascript: se rechaza',          array( 'script' => 'javascript:alert(1)' ),   'script',   'https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js' ),
+	array( 'script javascript: se rechaza',          array( 'script' => 'javascript:alert(1)' ),   'script',   '' ),
+	array( 'script http: se rechaza',                array( 'script' => 'http://malo.test/x.js' ), 'script',   '' ),
 	array( 'color invalido se rechaza',  array( 'color' => 'rojo; background:url(x)' ), 'color',   '#4f46e5' ),
 	array( 'color valido se acepta',     array( 'color' => '#9a6b45' ),                 'color',   '#9a6b45' ),
 	array( 'posicion inventada se rechaza', array( 'posicion' => 'centro-raro' ),       'posicion','borde-derecho' ),
@@ -101,6 +103,23 @@ foreach ( $pruebas as $p ) {
 	printf( "  %s  %-58s %s\n", $ok ? 'ok ' : 'MAL', $nombre, $ok ? '' : "dio: '{$r[$campo]}'" );
 	if ( ! $ok ) { $fallos[] = $nombre; }
 }
+
+/* ── Control positivo de la copia local (Websalia, 19-sep-2026) ──────────────
+   El defecto que se arreglo hoy: el plugin traia por defecto la URL de jsDelivr
+   apuntando a @main, asi que cada web seguia en vivo la rama del repo. Estas dos
+   comprueban que sin URL se sirve el fichero DEL PLUGIN, y que una URL puesta a
+   mano sigue mandando. Sin esto, "0 fallos" no probaria el cambio. */
+$GLOBALS['sim']['opcion'] = array();
+$local = feedtack_url_script();
+$bien  = ( $local === 'https://ejemplo.test/wp-content/plugins/feedtack/feedtack.js' );
+printf( "\n%s  sin URL configurada se sirve la copia del plugin   %s\n", $bien ? '  ok ' : '  MAL', $local );
+if ( ! $bien ) { $fallos[] = 'copia local'; }
+
+$GLOBALS['sim']['opcion'] = array( 'script' => 'https://otro.test/feedtack.js' );
+$suya = feedtack_url_script();
+$bien2 = ( $suya === 'https://otro.test/feedtack.js' );
+printf( "%s  una URL puesta a mano sigue mandando               %s\n", $bien2 ? '  ok ' : '  MAL', $suya );
+if ( ! $bien2 ) { $fallos[] = 'url propia'; }
 
 echo "\n" . ( $fallos ? 'FALLOS: ' . implode( ', ', $fallos ) : 'TODO CORRECTO' ) . "\n";
 exit( $fallos ? 1 : 0 );
