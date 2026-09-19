@@ -212,8 +212,8 @@ If you would rather not host it, jsDelivr serves it straight from this repositor
 
 > ⚠️ `@main` tracks this repository's main branch, so your clients' sites pick up our changes
 > the moment we push them, including the broken ones. If you use the CDN, pin it to a release
-> tag (`@v<version>`, see [releases](https://github.com/alvaromassana/feedtack/releases))
-> rather than `@main`.
+> tag rather than `@main`, for example
+> `@v1.0.0` ([releases](https://github.com/alvaromassana/feedtack/releases)).
 
 | Attribute | What for | Default |
 |---|---|---|

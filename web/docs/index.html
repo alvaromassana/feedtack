@@ -151,9 +151,9 @@ openssl rand -hex 24 | npx wrangler secret put CLAVE_ADMIN   <span class="eco">#
 <pre><code>&lt;script src="https://cdn.jsdelivr.net/gh/alvaromassana/feedtack@main/widget/feedtack.js" ...</code></pre>
       <p class="aviso"><code>@main</code> tracks this repository's main branch, so your clients'
         sites pick up our changes the moment we push them, including the broken ones. If you use the
-        CDN, pin it to a release tag
-        (<a href="https://github.com/alvaromassana/feedtack/releases" rel="noopener">releases</a>)
-        rather than <code>@main</code>.</p>
+        CDN, pin it to a release tag rather than <code>@main</code>, for example
+        <code>@v1.0.0</code>
+        (<a href="https://github.com/alvaromassana/feedtack/releases" rel="noopener">releases</a>).</p>
       <table>
         <tr><th>Attribute</th><th>What for</th><th>Default</th></tr>
         <tr><td><code>data-site</code></td><td>Identifies the client, shows up in the email subject.</td><td><code>sin-identificar</code></td></tr>
