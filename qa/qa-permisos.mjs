@@ -6,15 +6,13 @@
  *
  * node qa/qa-permisos.mjs <clave-admin> [base]
  */
-import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
-const { chromium } = pkg;
+import { chromium, CHROME } from './navegador.mjs';
 import { mkdirSync } from 'fs';
 
 const CLAVE = process.argv[2];
 const BASE = process.argv[3] || process.env.FEEDTACK_DEMO || 'http://127.0.0.1:8791';
 const API = process.env.FEEDTACK_API || process.argv[4] || 'https://tu-worker.workers.dev';
-const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
-const SALIDA = '/home/alvaro/projects/feedtack/qa/capturas';
+const SALIDA = new URL('capturas/', import.meta.url).pathname;
 if (!CLAVE) { console.error('falta la clave de administración'); process.exit(2); }
 mkdirSync(SALIDA, { recursive: true });
 

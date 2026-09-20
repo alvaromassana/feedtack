@@ -6,13 +6,11 @@
  *
  * Salida: docs/img/senalar.png, docs/img/panel.png, docs/img/lista.png, docs/img/demo.webm
  */
-import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
-const { chromium } = pkg;
+import { chromium, CHROME } from './navegador.mjs';
 import { mkdirSync, readdirSync, renameSync, rmSync } from 'fs';
 
 const BASE = process.argv[2] || 'https://feedtack.dev';
 const OUT = new URL('../docs/img/', import.meta.url).pathname;
-const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 mkdirSync(OUT, { recursive: true });
 
 const sh = (p, fn, arg) => p.evaluate(fn, arg);

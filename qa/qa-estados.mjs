@@ -2,13 +2,11 @@
  * QA visual del widget Feedtack: captura cada estado por separado.
  * node qa/qa-estados.mjs [url] [carpeta-salida]
  */
-import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
-const { chromium } = pkg;
+import { chromium, CHROME } from './navegador.mjs';
 import { mkdirSync } from 'fs';
 
 const URL_DEMO = process.argv[2] || 'http://127.0.0.1:8791/';
-const SALIDA = process.argv[3] || '/home/alvaro/projects/feedtack/qa/capturas';
-const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
+const SALIDA = process.argv[3] || new URL('capturas/', import.meta.url).pathname;
 
 mkdirSync(SALIDA, { recursive: true });
 

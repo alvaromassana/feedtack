@@ -2,11 +2,9 @@
  * Prueba de extremo a extremo contra la demo PUBLICADA:
  * señala un elemento, adjunta una imagen y envía de verdad.
  */
-import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
-const { chromium } = pkg;
+import { chromium, CHROME } from './navegador.mjs';
 
 const URL_DEMO = process.argv[2] || 'https://feedtack.dev/';
-const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 
 const b = await chromium.launch({ headless: true, executablePath: CHROME, args: ['--no-sandbox'] });
 const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, locale: 'es-ES' });

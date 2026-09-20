@@ -9,9 +9,7 @@
  *   5. window.Tack sigue respondiendo como alias
  * Control negativo incluido: un navegador limpio NO debe heredar identidad de nadie.
  */
-import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
-const { chromium } = pkg;
-const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
+import { chromium, CHROME } from './navegador.mjs';
 const BASE = process.env.FEEDTACK_DEMO || 'http://127.0.0.1:8791/';
 const fallos = [];
 const ok = (n, c, d = '') => { console.log(`  ${c ? 'ok  ' : 'MAL '} ${n}${c ? '' : '   ' + d}`); if (!c) fallos.push(n); };

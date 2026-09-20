@@ -6,6 +6,13 @@ All notable changes to Feedtack are listed here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- **The browser tests run on other people's machines.** All ten of them imported Playwright
+  through an absolute path on the author's computer, so nobody else could run a single one.
+  They now go through `qa/navegador.mjs`, which resolves it from `FEEDTACK_PLAYWRIGHT`, from
+  a normally installed `playwright-core`, or from the author's copy, and exits 2 with
+  instructions if there is none. Output folders are relative too.
+
 ### Added
 - **The WordPress plugin is translatable.** Its strings were hardcoded Spanish while it
   declared `Text Domain: feedtack` and had no `__()` anywhere, so anyone installing it

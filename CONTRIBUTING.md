@@ -53,10 +53,18 @@ php wordpress/prueba-traduccion.php    # every plugin string has its Spanish tra
 (cd worker && npx wrangler deploy --dry-run --outdir /tmp/build)   # the Worker builds
 ```
 
-🔴 The browser tests in `qa/` drive Playwright's Chromium through **absolute paths
-hardcoded to the author's machine** (look at the first lines of any of them). You have to
-edit those paths before they run anywhere else, and two of them write to a real backend
-and need a key. That is why CI does not run them.
+The browser tests in `qa/` find Chromium through `qa/navegador.mjs`, which tries, in
+order: `FEEDTACK_PLAYWRIGHT`, a normally resolved `playwright-core` or `playwright`, and
+finally the author's own copy. If none is there it exits 2 and tells you what to install,
+rather than crashing. To run them on a fresh machine:
+
+```bash
+npm install --no-save playwright-core && npx playwright-core install chromium
+```
+
+Set `FEEDTACK_CHROME` if you want a specific browser binary; left alone, Playwright uses
+the one it downloaded. Two of them (`qa-permisos`, `qa-ciclo`) still write to a real
+backend and need a key, which is why CI does not run those.
 
 🔴 `node --check` is not enough for the Worker: a quote mismatch inside a nested template
 literal parses fine and silently changes what the email says. Use the wrangler dry-run,

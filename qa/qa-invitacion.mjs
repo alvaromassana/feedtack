@@ -5,13 +5,11 @@
  * Casos: 1) invita y no envía  2) si insistes, envía  3) si señalas, no invita
  *        4) el segundo comentario vuelve a recibir la invitación
  */
-import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
-const { chromium } = pkg;
+import { chromium, CHROME } from './navegador.mjs';
 import { mkdirSync } from 'fs';
 
 const URL_DEMO = process.argv[2] || 'http://127.0.0.1:8791/';
-const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
-const SALIDA = '/home/alvaro/projects/feedtack/qa/capturas';
+const SALIDA = new URL('capturas/', import.meta.url).pathname;
 mkdirSync(SALIDA, { recursive: true });
 
 const fallos = [];

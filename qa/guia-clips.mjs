@@ -10,8 +10,7 @@
  *
  * Salida: guia/clips/<id>.webm  (de ahí salen el mp4 y el gif con ffmpeg, ver abajo)
  */
-import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
-const { chromium } = pkg;
+import { chromium, CHROME } from './navegador.mjs';
 import { mkdirSync, readdirSync, renameSync, rmSync, writeFileSync, existsSync } from 'fs';
 
 const args = process.argv.slice(2);
@@ -20,7 +19,6 @@ const BASE = flag('--url', 'https://feedtack.dev');
 const SOLO = (flag('--solo', '') || '').split(',').filter(Boolean);
 
 const OUT = new URL('../guia/clips/', import.meta.url).pathname;
-const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 const YO = 'a-nuria';                       // autorId fijo, para que "lo escribiste tú" salga
 const NOMBRE = 'Núria Vallmar';
 const ADJUNTO = '/tmp/tack-guia-adjunto.png';

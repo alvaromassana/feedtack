@@ -3,11 +3,9 @@
  * borraba el comentario ya escrito, porque el panel se reconstruye entero.
  * Cubre también combinar las cuatro entradas en un solo envío.
  */
-import pkg from '/home/alvaro/tools/qa-visual/node_modules/playwright-core/index.js';
-const { chromium } = pkg;
+import { chromium, CHROME } from './navegador.mjs';
 
 const URL_DEMO = process.argv[2] || 'http://127.0.0.1:8791/';
-const CHROME = '/home/alvaro/.cache/ms-playwright/chromium-1228/chrome-linux64/chrome';
 const TEXTO = 'Este texto NO se puede perder al señalar un elemento.';
 const NOMBRE = 'Álvaro Massana';
 
