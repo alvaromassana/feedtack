@@ -28,11 +28,22 @@ node qa/qa-persistencia.mjs   # don't lose what you typed when pointing
 node qa/qa-invitacion.mjs     # the nudge to point at things
 node qa/qa-permisos.mjs KEY   # who can do what (writes to a real backend)
 node qa/qa-ciclo.mjs KEY      # full lifecycle (writes to a real backend)
+
+# these four need nothing but node and php, and CI runs them on every pull request
 php wordpress/prueba-guardarrail.php   # the production lock, 20 cases, no WordPress needed
+(cd worker && node qa/qa-idiomas.mjs)  # both email languages are in step
+(cd worker && node qa/qa-tandas.mjs)   # email batching, with the Worker booted locally
+(cd worker && npx wrangler deploy --dry-run --outdir /tmp/build)   # the Worker builds
 ```
 
-The browser tests use Playwright's Chromium. Adjust the paths at the top of each script to
-where yours lives.
+🔴 The browser tests in `qa/` drive Playwright's Chromium through **absolute paths
+hardcoded to the author's machine** (look at the first lines of any of them). You have to
+edit those paths before they run anywhere else, and two of them write to a real backend
+and need a key. That is why CI does not run them.
+
+🔴 `node --check` is not enough for the Worker: a quote mismatch inside a nested template
+literal parses fine and silently changes what the email says. Use the wrangler dry-run,
+which is what CI does.
 
 ## Pull request checklist
 

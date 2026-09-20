@@ -47,6 +47,21 @@ jobs:
         working-directory: worker
         run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/build
 
+  email-languages:
+    name: Both email languages say the same things
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No wrangler, no network: it reads the IDIOMAS table out of src/index.js. A missing
+      # key would otherwise render the word "undefined" into an email that still sends.
+      - name: es and en are in step
+        working-directory: worker
+        run: node qa/qa-idiomas.mjs
+
   plugin:
     name: WordPress production lock
     runs-on: ubuntu-latest
