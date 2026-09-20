@@ -357,8 +357,10 @@ along with the [code of conduct](CODE_OF_CONDUCT.md). Changes are listed in
 [CI](.github/workflows/ci.yml): the code parses, the plugin's production lock still holds,
 and the three copies of the widget still match.
 
-The code and its comments are in Spanish. That's where it was written and I'm not going to
-pretend otherwise. The interface is bilingual.
+The comments are in English. Some names are not: the API routes, the JSON fields, the config
+variables and the SQL columns were written in Spanish and renaming them would break every
+install that already exists, so they stay until there is a version that can afford it. The
+interface is bilingual, and so is the notification email (`EMAIL_LANG`).
 
 ## Licence
 

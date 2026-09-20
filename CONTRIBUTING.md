@@ -10,9 +10,14 @@ one WordPress plugin. Contributions that keep it that way are the easiest to mer
 - **No build step, no dependencies.** The widget is plain JavaScript in a single file and
   has to stay that way. If your change needs a bundler or a library, it probably belongs
   somewhere else.
-- **The code and its comments are in Spanish.** That's where the project was written. The
-  user interface is bilingual (`es` / `en`), and any new string has to be added to both
-  languages in the `TEXTOS` table.
+- **Comments are in English; some names are still Spanish.** The comments were translated
+  in September 2026. What has NOT changed, because it would break existing installs, is the
+  public surface: the API routes (`/api/comentarios`, `/api/feedback`, `/salud`), the JSON
+  field names (`mensaje`, `senalados`, `autor`, `estado`, `ruta`, `creado`...), the config
+  variables (`DESTINO`, `REMITENTE`, `ORIGENES_PERMITIDOS`...) and the SQL columns. Match
+  what is around you rather than renaming as you go.
+- **The user interface is bilingual** (`es` / `en`), and any new string has to be added to
+  both languages: in the `TEXTOS` table for the widget, in `IDIOMAS` for the email.
 - **Keep the production lock.** Anything that makes it easier to run this on a live site
   is a no.
 
