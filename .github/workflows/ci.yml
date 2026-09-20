@@ -1,0 +1,107 @@
+name: CI
+
+# Runs on every push and pull request. Everything here is offline: no secrets, no network,
+# no Cloudflare account. The browser tests in qa/ are deliberately NOT here, see the note
+# at the bottom of this file.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    name: Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: JavaScript parses
+        run: |
+          for f in widget/feedtack.js worker/src/index.js guia/construir.mjs \
+                   worker/qa/qa-tandas.mjs wordpress/feedtack/feedtack.js; do
+            node --check "$f"
+            echo "ok  $f"
+          done
+
+      - name: PHP parses
+        run: |
+          php -l wordpress/feedtack/feedtack.php
+          php -l wordpress/prueba-guardarrail.php
+
+      - name: Shell parses
+        run: bash -n wordpress/construir.sh
+
+      # 🔴 node --check is NOT enough for the Worker. A mismatched quote inside a nested
+      # template literal (opening with ' and closing with `) still parses as valid
+      # JavaScript and silently changes what the email says. Only a real bundle catches
+      # it. This builds the Worker without deploying and without any Cloudflare account.
+      - name: The Worker actually builds
+        working-directory: worker
+        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/build
+
+  email-languages:
+    name: Both email languages say the same things
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No wrangler, no network: it reads the IDIOMAS table out of src/index.js. A missing
+      # key would otherwise render the word "undefined" into an email that still sends.
+      - name: es and en are in step
+        working-directory: worker
+        run: node qa/qa-idiomas.mjs
+
+  plugin:
+    name: WordPress production lock
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The bank simulates the WordPress functions the plugin uses, so it needs no
+      # WordPress and no database. It exits 1 when a case fails.
+      - name: The plugin refuses to load in production
+        run: php wordpress/prueba-guardarrail.php
+
+  copies:
+    name: The three copies of the widget match
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The plugin ships its own copy of the widget, and the zip ships a third one. They
+      # drift in silence: editing widget/feedtack.js and forgetting wordpress/construir.sh
+      # publishes a plugin with an old widget inside and nothing complains.
+      - name: widget == plugin == zip
+        run: |
+          unzip -qo wordpress/feedtack.zip -d /tmp/zip
+          a=$(md5sum < widget/feedtack.js | cut -d' ' -f1)
+          b=$(md5sum < wordpress/feedtack/feedtack.js | cut -d' ' -f1)
+          c=$(md5sum < /tmp/zip/feedtack/feedtack.js | cut -d' ' -f1)
+          p=$(md5sum < wordpress/feedtack/feedtack.php | cut -d' ' -f1)
+          q=$(md5sum < /tmp/zip/feedtack/feedtack.php | cut -d' ' -f1)
+          echo "widget $a"; echo "plugin $b"; echo "zip    $c"
+          [ "$a" = "$b" ] || { echo "::error::wordpress/feedtack/feedtack.js is not the widget. Run wordpress/construir.sh"; exit 1; }
+          [ "$a" = "$c" ] || { echo "::error::feedtack.zip carries a different widget. Run wordpress/construir.sh"; exit 1; }
+          [ "$p" = "$q" ] || { echo "::error::feedtack.zip carries a different plugin file. Run wordpress/construir.sh"; exit 1; }
+          echo "all three match"
+
+# Not here, and why:
+#
+#   qa/*.mjs          browser tests. They drive Playwright's Chromium through absolute
+#                     paths hardcoded to the author's machine, and two of them
+#                     (qa-permisos, qa-ciclo) write to a real backend and need a key.
+#                     Running them in CI means rewriting them first.
+#   worker/qa/        qa-tandas.mjs boots the Worker with `npx wrangler dev --local`.
+#                     It works offline, but it downloads wrangler on first run and takes
+#                     minutes. Worth adding once the repo has a package.json to pin it.

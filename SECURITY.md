@@ -13,8 +13,22 @@ built for that, and only for that:
   browser that used it.
 - **Origins are allowlisted.** The Worker only accepts requests from the domains listed in
   `ORIGENES_PERMITIDOS`. Everything else is rejected by CORS.
-- **Attachments are never stored.** Screenshots, images and voice notes go out by email and
-  are not kept in the database.
+- **Attachments are stored in your R2 bucket, and served from an unguessable public URL.**
+  Every file a reviewer attaches is written to R2 under
+  `<site>/<comment id>/<32 random hex>/<filename>` and can be fetched at
+  `GET /attachments/<that key>` (`/adjuntos/` still answers). That URL is **not** behind CORS, the team key or any other
+  check: whoever holds the link can read the file. The key is the only secret, and it
+  travels in the notification email. The Worker does force `X-Content-Type-Options: nosniff`,
+  a `sandbox` CSP, `X-Robots-Tag: noindex`, and serves everything but real images
+  (`png`, `jpeg`, `gif`, `webp`) as a download, so an uploaded SVG or HTML cannot run script
+  on your Worker's domain.
+- **Deleting a comment deletes its attachments too**, since 20 September 2026:
+  `DELETE /api/comments/:id` removes the database row and then deletes every R2 object
+  under that comment's prefix, replies included. The response says how many
+  (`ficherosBorrados`). 🔴 It only reaches files uploaded from that date on: older keys
+  carry a date instead of the comment id and cannot be linked back to it, so nothing here
+  can find them. Set an R2 lifecycle rule on the bucket if you want those to expire.
+- **Nothing expires on its own.** There is no retention policy unless you configure one.
 - **There is no rate limiting.** An allowed origin can send as many comments as it likes.
 
 The WordPress plugin refuses to load when `wp_get_environment_type()` returns

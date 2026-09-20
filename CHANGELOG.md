@@ -6,7 +6,47 @@ All notable changes to Feedtack are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **The HTTP API answers in English**: `/api/comments`, `/api/comments/:id/replies`,
+  `/api/comments/:id/status`, `/health`, `/attachments/<key>`, and every comment comes back
+  with `message`, `targets`, `author`, `authorId`, `status`, `path`, `created`, `updated`,
+  `title`, `replies` and `attachments`. Documented in the README.
+  **Nothing breaks**: the Spanish routes still answer and every response carries both sets
+  of field names, because an installed widget that lost its routes would show an empty list
+  with no error at all. The aliases go away once no review started before this is still
+  open, which is the same condition the project already wrote for `tack_*`. The `status`
+  values (`abierto`, `resuelto`…) are data and are not translated.
+
+### Fixed
+- **Deleting a comment now deletes its attachments.** `DELETE` removed the row and left the
+  files in R2 with their URLs working forever. Attachment keys now carry the comment id, so
+  they can be found and deleted, replies included. Older files cannot be linked back to
+  their comment; an R2 lifecycle rule is the way to clear those.
+- **The README and SECURITY.md were wrong about where attachments go.** Both said they are
+  emailed and never stored; they have been written to R2 since 8 September 2026 and are
+  served from `GET /adjuntos/<key>`, an unguessable but public URL that does not go through
+  CORS or the team key. Deleting a comment still does not delete its attachments. All of
+  that is now written down instead of denied.
+
+### Added
+- **The notification email speaks English too.** New `EMAIL_LANG` (`es` by default, so no
+  existing deployment changes) and `ZONA_HORARIA`. Everything the email says lives in one
+  `IDIOMAS` table in `worker/src/index.js`; the dates no longer force `es-ES` and
+  `Europe/Madrid`.
+- **Continuous integration**, which did not exist despite ten test files: on every push and
+  pull request the code parses, the Worker really builds (`wrangler deploy --dry-run`, which
+  catches quote mistakes that `node --check` does not), both email languages are in step, the
+  WordPress production lock still holds, and the three copies of the widget still match.
+- `qa/qa-idiomas.mjs`: checks the two email languages have the same keys, the same types and
+  no value that renders as "undefined". No network, no wrangler.
+- `CODE_OF_CONDUCT.md`, `.editorconfig` and `.gitattributes`.
+
 ### Changed
+- **The comments are in English now.** Widget, Worker, WordPress plugin, SQL schema,
+  `wrangler.toml` and the guide builder. Verified to be comment-only: the files before and
+  after are byte-identical once comments are stripped. The public surface (API routes, JSON
+  fields, config variables, SQL columns) is deliberately unchanged: renaming it would break
+  every install that already exists.
 - **The project is now called Feedtack** (it was Tack Comment). Renamed everywhere: the
   repository, the widget file (`widget/feedtack.js`), the WordPress plugin, the worker
   template, the docs and the demo. Existing installs keep working: the old repository URL

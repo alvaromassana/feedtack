@@ -1,51 +1,51 @@
--- Feedtack — comentarios de revisión de webs
+-- Feedtack — review comments on websites
 
 CREATE TABLE IF NOT EXISTS comentarios (
   id          TEXT PRIMARY KEY,
   site        TEXT NOT NULL,
 
-  -- dónde se hizo
+  -- where it was written
   url         TEXT NOT NULL,
   ruta        TEXT NOT NULL,
   titulo      TEXT,
 
-  -- qué dice
+  -- what it says
   mensaje     TEXT NOT NULL DEFAULT '',
   senalados   TEXT NOT NULL DEFAULT '[]',   -- JSON: [{selector, texto, rect}]
-  n_adjuntos  INTEGER NOT NULL DEFAULT 0,   -- los archivos viajan por correo, aquí solo el recuento
+  n_adjuntos  INTEGER NOT NULL DEFAULT 0,   -- just the count; the files live in R2, see avisos_pendientes
 
-  -- quién
+  -- who
   autor       TEXT NOT NULL DEFAULT '',
-  autor_id    TEXT NOT NULL,                -- identidad anónima guardada en el navegador
+  autor_id    TEXT NOT NULL,                -- anonymous identity kept in the browser
 
-  -- en qué punto está
-  --   abierto     el cliente lo acaba de escribir
-  --   resuelto    lo hemos arreglado, esperando que el cliente lo mire
-  --   confirmado  el cliente ha dado el visto bueno (fin del recorrido)
-  --   reabierto   el cliente dice que no está bien
+  -- where it stands
+  --   abierto     the client has just written it
+  --   resuelto    we fixed it, waiting for the client to look
+  --   confirmado  the client signed it off (end of the road)
+  --   reabierto   the client says it is not right
   estado      TEXT NOT NULL DEFAULT 'abierto',
 
-  contexto    TEXT NOT NULL DEFAULT '{}',   -- JSON: navegador, ventana, etc.
+  contexto    TEXT NOT NULL DEFAULT '{}',   -- JSON: browser, window, and so on
   historial   TEXT NOT NULL DEFAULT '[]',   -- JSON: [{momento, de, a, texto_anterior}]
 
   creado      TEXT NOT NULL,
   actualizado TEXT NOT NULL
 );
 
--- El panel siempre pide "todos los de esta web, los pendientes primero"
+-- The panel always asks for "everything on this site, open ones first"
 CREATE INDEX IF NOT EXISTS idx_site_estado ON comentarios (site, estado, creado);
 CREATE INDEX IF NOT EXISTS idx_site_ruta   ON comentarios (site, ruta);
 
--- Respuestas dentro de un comentario (7-sep-2026). Van en su PROPIA tabla y no como
--- comentarios con padre: si compartieran tabla, cada consulta de la lista, de las
--- chinchetas y de los contadores tendría que acordarse de excluirlas, y la que se
--- olvidara pintaría una chincheta por cada respuesta. Aquí no pueden colarse.
+-- Replies inside a comment (7 September 2026). They live in their OWN table rather than
+-- as comments with a parent: sharing a table would mean every query for the list, the pins
+-- and the counters had to remember to exclude them, and the one that forgot would draw a
+-- pin per reply. Here they cannot slip through.
 CREATE TABLE IF NOT EXISTS respuestas (
   id           TEXT PRIMARY KEY,
   comentario   TEXT NOT NULL,
   site         TEXT NOT NULL,
   mensaje      TEXT NOT NULL DEFAULT '',
-  senalados    TEXT NOT NULL DEFAULT '[]',   -- puede señalar otra zona, sin crear marcador
+  senalados    TEXT NOT NULL DEFAULT '[]',   -- a reply can point at another area without creating a pin
   n_adjuntos   INTEGER NOT NULL DEFAULT 0,
   autor        TEXT NOT NULL DEFAULT '',
   autor_id     TEXT NOT NULL,
@@ -54,38 +54,37 @@ CREATE TABLE IF NOT EXISTS respuestas (
 );
 CREATE INDEX IF NOT EXISTS idx_resp_comentario ON respuestas (comentario, creado);
 
--- Cola de avisos por tanda (8-sep-2026). Antes salía un correo por cada cosa que
--- pasaba; ahora el primer evento de una web abre una ventana y al cerrarse sale UN
--- correo con todo lo que haya caído dentro.
+-- Queue of batched notifications (8 September 2026). One email used to go out per event;
+-- now the first event on a site opens a window, and when it closes ONE email goes out with
+-- everything that landed inside it.
 --
--- La cola vive en D1 y no en el almacén del Durable Object a propósito: así se puede
--- mirar con `wrangler d1 execute` cuando algo no llega, y un aviso que falló sigue
--- ahí (lo recoge la tanda siguiente) en vez de desaparecer.
+-- The queue lives in D1 and not in the Durable Object's own storage on purpose: this way you
+-- can look at it with `wrangler d1 execute` when something does not arrive, and a
+-- notification that failed is still there (the next batch picks it up) instead of vanishing.
 --
--- Los adjuntos NO caben aquí: van a R2 y esta fila guarda solo su clave, su nombre y
--- su tamaño. Es la consecuencia de diferir: antes el fichero viajaba directo al correo
--- y no se guardaba en ningún sitio (`n_adjuntos` era solo un contador).
+-- Attachments do NOT fit here: they go to R2 and this row keeps only their key, name and
+-- size. That is the price of deferring: the file used to travel straight to the email and
+-- was not stored anywhere (`n_adjuntos` was only a counter).
 CREATE TABLE IF NOT EXISTS avisos_pendientes (
   id         TEXT PRIMARY KEY,
   site       TEXT NOT NULL,
   tipo       TEXT NOT NULL,              -- nuevo | respuesta | editado | reabierto
-  comentario TEXT,                       -- a qué comentario se refiere (para agrupar en el correo)
-  payload    TEXT NOT NULL,              -- JSON del aviso SIN los binarios
-  adjuntos   TEXT NOT NULL DEFAULT '[]', -- JSON: [{clave, nombre, tipo, bytes}] en R2
+  comentario TEXT,                       -- which comment it refers to, so the email can group them
+  payload    TEXT NOT NULL,              -- JSON of the notification WITHOUT the binaries
+  adjuntos   TEXT NOT NULL DEFAULT '[]', -- JSON: [{clave, nombre, tipo, bytes}] in R2
   creado     TEXT NOT NULL,
-  enviado    TEXT,                       -- NULL = pendiente. Fecha ISO cuando salió
-  intentos   INTEGER NOT NULL DEFAULT 0, -- a partir de 5 se manda sin adjuntos (uno grande no puede bloquear la cola)
+  enviado    TEXT,                       -- NULL = pending. ISO date once it went out
+  intentos   INTEGER NOT NULL DEFAULT 0, -- from 5 on it is sent without attachments (one big file cannot block the queue)
 
-  -- 🔒 Las dos columnas de RESERVA, y no son adorno: sin ellas el mismo correo puede
-  -- salir DOS veces. Dentro de un Durable Object, un `await` que no sea de su almacén
-  -- (D1, R2, Resend) NO bloquea la entrada de eventos nuevos, así que el corte por
-  -- número puede volver a entrar mientras la tanda anterior está subiendo a Resend y
-  -- leer las mismas filas, que todavía no están marcadas. La reserva es un UPDATE
-  -- atómico: quien se lleva las filas es quien las manda, y nadie más las ve.
-  -- Una reserva de hace más de 15 minutos se considera muerta (el worker se cayó a
-  -- mitad del envío) y se vuelve a coger.
-  reclamo    TEXT,                       -- identificador de quien la tiene en vuelo
-  reclamado  TEXT                        -- cuándo la cogió (ISO)
+  -- 🔒 The two RESERVATION columns, and they are not decoration: without them the same
+  -- email can go out TWICE. Inside a Durable Object, an `await` that is not on its own
+  -- storage (D1, R2, Resend) does NOT block new events from coming in, so the count cut-off
+  -- can re-enter while the previous batch is still uploading to Resend and read the same
+  -- rows, which are not marked yet. The reservation is one atomic UPDATE: whoever takes the
+  -- rows is whoever sends them, and nobody else sees them. A reservation older than 15
+  -- minutes is considered dead (the worker died mid-send) and is picked up again.
+  reclamo    TEXT,                       -- id of whoever has it in flight
+  reclamado  TEXT                        -- when they took it (ISO)
 );
 CREATE INDEX IF NOT EXISTS idx_avisos_pend ON avisos_pendientes (site, enviado, creado);
 CREATE INDEX IF NOT EXISTS idx_avisos_reclamo ON avisos_pendientes (reclamo);

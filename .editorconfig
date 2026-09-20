@@ -1,0 +1,23 @@
+# Describes how this repository is already indented, measured, not imposed:
+# JavaScript, CSS, HTML and SQL use two spaces; the WordPress plugin uses tabs, because
+# that is the WordPress coding standard and the plugin follows it.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.php]
+indent_style = tab
+
+[*.md]
+# Two trailing spaces are a line break in Markdown.
+trim_trailing_whitespace = false
+
+[Makefile]
+indent_style = tab

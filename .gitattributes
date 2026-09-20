@@ -1,0 +1,17 @@
+# Text files are stored with LF and checked out with LF everywhere, including Windows.
+# Without this, a contributor on Windows can turn the whole widget into a CRLF diff.
+* text=auto eol=lf
+
+# Binary: never touch, never try to diff.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.mp4  binary
+*.zip  binary
+
+# Keep the noise out of the tarball GitHub builds for a release, and out of language stats.
+qa/**        export-ignore linguist-vendored
+demo/**      linguist-documentation
+guia/clips/** export-ignore
+.github/**   export-ignore

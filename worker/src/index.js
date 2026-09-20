@@ -1,21 +1,21 @@
 /**
- * Feedtack — backend del widget de feedback (Cloudflare Worker + D1)
+ * Feedtack — backend for the feedback widget (Cloudflare Worker + D1)
  *
- *   POST   /api/feedback            crear comentario (multipart) → guarda y avisa por correo
- *   GET    /api/comentarios?site=X  listar los de una web
- *   PATCH  /api/comentarios/:id     editar el texto (solo su autor)
- *   POST   /api/comentarios/:id/estado   resolver / confirmar / reabrir / cerrar
- *   DELETE /api/comentarios/:id     eliminar (SOLO con clave de administración)
- *   GET    /adjuntos/<clave>        una captura guardada en R2 (clave irrepetible)
- *   GET    /salud
+ *   POST   /api/feedback            create a comment (multipart) → stores it and emails you
+ *   GET    /api/comentarios?site=X  list the ones on a site
+ *   PATCH  /api/comentarios/:id     edit the text (author only)
+ *   POST   /api/comentarios/:id/estado   resolve / confirm / reopen / close
+ *   DELETE /api/comentarios/:id     delete (team key ONLY, or the author on their own)
+ *   GET    /adjuntos/<key>          an attachment stored in R2 (unguessable key)
+ *   GET    /salud                   health
  *
- * Estados: abierto → resuelto (el equipo) → confirmado | reabierto (el cliente)
- * El equipo, con clave, puede además cerrar directamente (notas internas y
- * recordatorios que no necesitan que nadie confirme nada).
+ * States: abierto → resuelto (the team) → confirmado | reabierto (the client)
+ * The team, with the key, can also close directly (internal notes and reminders that
+ * nobody needs to confirm).
  *
- * Secrets: RESEND_API_KEY, CLAVE_ADMIN, TANDAS (ponerla a "no" apaga la agrupación)
- * Vars:    DESTINO, REMITENTE, ORIGENES_PERMITIDOS, SITIOS (opcional),
- *          VENTANA_MINUTOS, CORTE_COMENTARIOS, BASE_PUBLICA
+ * Secrets: RESEND_API_KEY, CLAVE_ADMIN, TANDAS (set it to "no" to turn batching off)
+ * Vars:    DESTINO, REMITENTE, ORIGENES_PERMITIDOS, SITIOS (optional),
+ *          VENTANA_MINUTOS, CORTE_COMENTARIOS, BASE_PUBLICA, EMAIL_LANG, ZONA_HORARIA
  * Bindings: DB (D1), ADJUNTOS (R2), TANDAS_DO (Durable Object)
  */
 
@@ -24,20 +24,20 @@ import { DurableObject } from 'cloudflare:workers';
 const MAX_TOTAL = 22 * 1024 * 1024;
 const ESTADOS = ['abierto', 'resuelto', 'confirmado', 'reabierto'];
 
-/* Agrupación de avisos (8-sep-2026). El primer evento de una web abre la ventana y al
-   cerrarse sale UN correo con todo lo de dentro. Se cuenta desde el PRIMERO, no desde
-   el último: si no, una conversación seguida retrasa el aviso indefinidamente. */
+/* Notification batching (8 September 2026). The first event on a site opens the window
+   and when it closes ONE email goes out with everything inside it. It counts from the
+   FIRST one, not the last: otherwise a running conversation delays the email forever. */
 const VENTANA_MINUTOS = 10;
 const CORTE_COMENTARIOS = 10;
 
-/* Resend topa en 40 MB por correo y un solo comentario admite 22, así que en el correo
-   van las capturas mientras quepan en este presupuesto y el resto va enlazado a R2.
-   Se cuentan bytes EN CRUDO y el correo viaja en base64, que abulta un tercio más: 15 MB
-   de capturas son unos 20 MB de petición. De ahí el margen; subirlo mucho lo agota. */
+/* Resend caps at 40 MB per email and a single comment accepts 22 attachments, so files
+   ride inside the email while they fit in this budget and the rest are linked to R2.
+   These are RAW bytes and the email travels as base64, which is a third bigger: 15 MB of
+   screenshots is about 20 MB of request. Hence the margin; raising it much burns it. */
 const PRESUPUESTO_ADJUNTOS = 15 * 1024 * 1024;
 
-/* A partir de aquí un aviso se manda sin sus adjuntos: un fichero que Resend rechaza no
-   puede quedarse bloqueando la cola de una web entera. */
+/* From here on a notification goes out without its attachments: one file that Resend
+   rejects cannot be allowed to block an entire site's queue. */
 const INTENTOS_SIN_ADJUNTOS = 5;
 
 export default {
@@ -47,17 +47,17 @@ export default {
     const cors = cabecerasCors(origen, env);
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (url.pathname === '/salud') return await salud(env, cors);
+    if (url.pathname === '/health' || url.pathname === '/salud') return await salud(env, cors);
 
-    /* Las capturas se abren desde el correo, o sea desde un cliente de correo que no manda
-       Origin: esta ruta va ANTES del filtro de CORS a propósito, como /salud. Lo que la
-       protege es que la clave lleva 32 caracteres al azar y no hay forma de listar el
-       bucket; no es autenticación y está dicho en la ficha. */
-    const adj = url.pathname.match(/^\/adjuntos\/(.+)$/);
+    /* Attachments are opened from the email, that is, from a mail client that sends no
+       Origin: this route goes BEFORE the CORS filter on purpose, like /salud. What
+       protects it is that the key carries 32 random characters and there is no way to
+       list the bucket; it is not authentication, and SECURITY.md says so. */
+    const adj = url.pathname.match(/^\/(?:attachments|adjuntos)\/(.+)$/);
     if (adj && (request.method === 'GET' || request.method === 'HEAD')) {
       let clave;
-      // Un %AA a medias hace lanzar a decodeURIComponent, y esta ruta no pasa por el
-      // filtro de CORS: sin esto, cualquiera saca un 500 de aquí con una URL torcida.
+      // A half-written %AA makes decodeURIComponent throw, and this route does not go
+      // through the CORS filter: without this, anyone gets a 500 with a bent URL.
       try { clave = decodeURIComponent(adj[1]); }
       catch { return new Response('no encontrado', { status: 404 }); }
       return await servirAdjunto(clave, env, request.method);
@@ -67,18 +67,30 @@ export default {
       return json({ error: 'origen no permitido' }, 403, {});
     }
 
+    /* 🔒 Cada ruta tiene su nombre en inglés y el de siempre, y los dos llevan al mismo
+       sitio. El inglés es el nombre bueno y el que está documentado; el español se queda
+       porque hay revisiones abiertas cuyo widget, ya instalado en la web de un cliente,
+       llama a las rutas viejas, y un corte en seco las dejaría con la lista VACÍA y sin
+       error (`cargar()` traga el fallo a propósito). Los alias se retiran cuando no quede
+       ninguna revisión viva de antes del cambio, que es la misma condición que se escribió
+       para el renombrado de tack_* a feedtack_* y la misma que sigue vigente. */
+    const ruta = url.pathname
+      .replace(/^\/api\/comments\b/, '/api/comentarios')
+      .replace(/\/replies$/, '/respuestas')
+      .replace(/\/status$/, '/estado');
+
     try {
-      if (url.pathname === '/api/feedback' && request.method === 'POST') {
+      if (ruta === '/api/feedback' && request.method === 'POST') {
         return await crear(request, env, cors);
       }
-      if (url.pathname === '/api/comentarios' && request.method === 'GET') {
+      if (ruta === '/api/comentarios' && request.method === 'GET') {
         return await listar(url, env, cors);
       }
-      const r = url.pathname.match(/^\/api\/comentarios\/([\w-]+)\/respuestas$/);
+      const r = ruta.match(/^\/api\/comentarios\/([\w-]+)\/respuestas$/);
       if (r && request.method === 'POST') {
         return await responder(r[1], request, env, cors);
       }
-      const m = url.pathname.match(/^\/api\/comentarios\/([\w-]+)(\/estado)?$/);
+      const m = ruta.match(/^\/api\/comentarios\/([\w-]+)(\/estado)?$/);
       if (m && m[2] && request.method === 'POST') {
         return await cambiarEstado(m[1], request, env, cors);
       }
@@ -140,10 +152,10 @@ async function crear(request, env, cors) {
     JSON.stringify(contexto), ahora, ahora
   ).run();
 
-  /* El comentario ya está guardado: a partir de aquí ningún fallo del aviso puede
-     devolver error, porque el widget lo leería como "no se ha enviado" y la persona
-     volvería a escribirlo. Antes esta llamada iba sin red y un fallo de Resend acababa
-     en un 500 sobre un comentario guardado. */
+  /* The comment is already stored: from here on no failure of the notification may
+     return an error, because the widget would read it as "it did not send" and the
+     person would write it again. This call used to have no net, and a Resend failure
+     ended in a 500 on top of a comment that was safely saved. */
   await encolar(env, {
     tipo: 'nuevo',
     site, mensaje, autor, contexto, senalados, adjuntos, id
@@ -154,10 +166,10 @@ async function crear(request, env, cors) {
 
 // ────────────────────────────────────────────────────────────── responder
 
-/* Una respuesta dentro de un comentario. Admite lo mismo que un comentario (texto,
-   adjuntos y señalar una zona) porque a mitad de una conversacion hace falta poder
-   decir "me refiero a ESTO". Lo que NO hace es crear un marcador nuevo en la pagina:
-   la conversacion entera cuelga del comentario original y se lee dentro de el. */
+/* A reply inside a comment. It accepts the same as a comment (text, attachments and
+   pointing at an area) because halfway through a conversation you need to be able to say
+   "I mean THIS". What it does NOT do is create a new pin on the page: the whole
+   conversation hangs off the original comment and is read inside it. */
 async function responder(comentarioId, request, env, cors) {
   let form;
   try { form = await request.formData(); }
@@ -236,9 +248,9 @@ async function listar(url, env, cors) {
     });
   });
 
-  const comentarios = (results || []).map(c => ({
+  const comentarios = (results || []).map(c => enIngles({
     id: c.id,
-    respuestas: porComentario[c.id] || [],
+    respuestas: (porComentario[c.id] || []).map(enIngles),
     url: c.url,
     ruta: c.ruta,
     titulo: c.titulo,
@@ -253,7 +265,35 @@ async function listar(url, env, cors) {
     editado: JSON.parse(c.historial || '[]').some(h => h.texto_anterior != null)
   }));
 
-  return json({ ok: true, comentarios }, 200, cors);
+  return json({ ok: true, comments: comentarios, comentarios }, 200, cors);
+}
+
+/* 🔒 Cada comentario sale con sus campos en inglés Y con los de siempre. El inglés es el
+   nombre bueno; el español se queda mientras haya widgets instalados que lo lean, y esos
+   no fallarían con ruido: `cargar()` traga el error y pinta la lista vacía, así que el
+   cliente vería sus comentarios desaparecer sin un solo aviso.
+   Los estados NO se traducen: son valores, y además son los que hay escritos en la
+   columna `estado` de la base de cada instalación. Renombrarlos es migrar datos. */
+const CAMPOS_EN = {
+  mensaje: 'message', senalados: 'targets', autor: 'author', autorId: 'authorId',
+  estado: 'status', ruta: 'path', creado: 'created', actualizado: 'updated',
+  titulo: 'title', respuestas: 'replies', nAdjuntos: 'attachments', editado: 'edited',
+  contexto: 'context'
+};
+function enIngles(o) {
+  const salida = { ...o };
+  for (const [es, en] of Object.entries(CAMPOS_EN)) {
+    if (es in o) salida[en] = o[es];
+  }
+  return salida;
+}
+
+/* Y al revés: lo que entra se lee por el nombre inglés primero y por el de siempre
+   después, para que un widget viejo y uno nuevo hablen los dos con este worker. */
+function campo(fuente, en, es) {
+  const v = typeof fuente.get === 'function' ? (fuente.get(en) ?? fuente.get(es))
+                                             : (fuente[en] ?? fuente[es]);
+  return v;
 }
 
 // ───────────────────────────────────────────────────────────────── editar
@@ -269,7 +309,7 @@ async function editar(id, request, env, cors) {
   const fila = await env.DB.prepare('SELECT * FROM comentarios WHERE id = ?').bind(id).first();
   if (!fila) return json({ error: 'no existe' }, 404, cors);
 
-  // Solo el autor edita lo suyo. Es una web de revisión privada, no autenticación fuerte.
+  // Only the author edits their own. This is a private review site, not strong auth.
   if (fila.autor_id !== autorId) return json({ error: 'no es tuyo' }, 403, cors);
 
   const senalados = Array.isArray(cuerpo.senalados)
@@ -291,7 +331,7 @@ async function editar(id, request, env, cors) {
      WHERE id = ?`
   ).bind(nuevo, JSON.stringify(senalados), JSON.stringify(historial), ahora, id).run();
 
-  // Avisamos de la edición para que no trabajemos sobre la versión vieja
+  // We send the edit by email so nobody works off the old version
   await encolar(env, {
     tipo: 'editado',
     site: fila.site,
@@ -371,26 +411,45 @@ async function cambiarEstado(id, request, env, cors) {
 
 // ──────────────────────────────────────────────────────────────── eliminar
 
-/* Borrar es la única acción sin vuelta atrás, así que la reservamos al equipo
-   y mandamos copia por correo: si alguien borra algo por error, queda el rastro. */
+/* Deleting is the only action with no way back, so it is kept for the team and a copy
+   goes out by email: if somebody deletes something by mistake, the trace remains. */
 async function eliminar(id, request, env, cors) {
   const cuerpo = await request.json().catch(() => ({}));
 
   const fila = await env.DB.prepare('SELECT * FROM comentarios WHERE id = ?').bind(id).first();
   if (!fila) return json({ error: 'no existe' }, 404, cors);
 
-  /* Borra el equipo (con clave) o el AUTOR lo suyo. Lo segundo se apoya en el mismo
-     id anónimo de navegador con el que ya se edita lo propio: quien escribió algo por
-     error tiene que poder quitarlo sin pedírnoslo. No es autenticación y no pretende
-     serlo (está escrito en la ficha de la herramienta); es una herramienta de revisión
-     entre gente que se conoce, sobre un entorno que no es público. Se avisa por correo
-     en los dos casos, que es el único rastro que queda. */
+  /* The team deletes (with the key), or the AUTHOR deletes their own. The second leans
+     on the same anonymous browser id already used to edit your own: whoever wrote
+     something by mistake has to be able to remove it without asking us. It is not
+     authentication and does not pretend to be (SECURITY.md says so); this is a review
+     tool between people who know each other, on an environment that is not public.
+     Both cases send an email, which is the only trace left. */
   const suyo = cuerpo.autor_id && String(cuerpo.autor_id) === String(fila.autor_id);
   if (!esAdmin(cuerpo.clave, env) && !suyo) {
     return json({ error: 'solo el equipo o quien lo escribió pueden eliminarlo' }, 403, cors);
   }
 
   await env.DB.prepare('DELETE FROM comentarios WHERE id = ?').bind(id).run();
+
+  /* 🔒 Y sus ficheros. "He borrado mi comentario" tiene que significar que la foto ya no
+     está, no solo que no se vea en la lista: su URL de /adjuntos/ seguía funcionando para
+     siempre. Va DESPUÉS del borrado de la fila y no puede tumbar la petición: si R2 falla,
+     el comentario ya está borrado, que es lo que pidió quien pulsó el botón.
+     🔴 Solo alcanza a los subidos con la clave nueva (la que lleva el id). Los de antes
+     del 20-sep-2026 no son localizables desde aquí y los limpia la regla de ciclo de vida
+     del bucket. */
+  let ficherosBorrados = 0;
+  await seguro(async () => {
+    if (!env.ADJUNTOS) return;
+    const prefijo = `${fila.site}/${id}/`;
+    let cursor;
+    do {
+      const lote = await env.ADJUNTOS.list({ prefix: prefijo, cursor });
+      for (const obj of lote.objects) { await env.ADJUNTOS.delete(obj.key); ficherosBorrados++; }
+      cursor = lote.truncated ? lote.cursor : undefined;
+    } while (cursor);
+  }, 'borrado de adjuntos en R2');
 
   /* El aviso va DESPUES de borrar, asi que si falla el borrado ya esta hecho: devolver
      error haria que el usuario reintentase algo que ya ocurrio, y encima viendo un fallo.
@@ -412,14 +471,14 @@ async function eliminar(id, request, env, cors) {
     console.error('feedtack: borrado OK pero la copia por correo fallo', id, e && e.message);
   }
 
-  return json({ ok: true, eliminado: id, copiaEnviada }, 200, cors);
+  return json({ ok: true, eliminado: id, copiaEnviada, ficherosBorrados }, 200, cors);
 }
 
 // ──────────────────────────────────────────────────── adjuntos y cola de tandas
 
-/* Los adjuntos se recogen UNA vez y en crudo (ArrayBuffer). Antes se pasaban a base64
-   aquí mismo, que era gastar un 33% de memoria por un formato que solo necesita el
-   correo: a R2 van tal cual. */
+/* Attachments are collected ONCE and raw (ArrayBuffer). They used to be turned into
+   base64 right here, which spent 33% more memory on a format only the email needs: they
+   go to R2 as they are. */
 async function recogerAdjuntos(form) {
   const adjuntos = [];
   let total = 0;
@@ -436,22 +495,22 @@ async function recogerAdjuntos(form) {
   return { adjuntos };
 }
 
-/* Un aviso agrupable: se guarda en la cola, sus adjuntos van a R2, y se le dice al
-   Durable Object de ESA web que abra (o cuente en) su ventana.
-   Tres cosas que decide esta función y no otra:
-   1. El correo de ELIMINADO no espera nunca: es el único rastro que queda de algo que
-      ya no está, así que se manda en el acto con su copia dentro.
-   2. Si falta cualquier pieza (R2, el DO, o la agrupación está apagada), se cae al
-      camino de antes: un correo inmediato con los adjuntos. Diferir es una mejora de
-      ruido; perder un aviso no es aceptable a cambio.
-   3. Nunca lanza. Quien la llama ya ha guardado el comentario. */
+/* A batchable notification: it goes into the queue, its attachments go to R2, and THAT
+   site's Durable Object is told to open (or count into) its window.
+   Three things this function decides and nobody else does:
+   1. The DELETED email never waits: it is the only trace left of something that is no
+      longer there, so it goes out at once with its copy inside.
+   2. If any piece is missing (R2, the DO, or batching is off), it falls back to the old
+      path: an immediate email with the attachments. Deferring is a noise improvement;
+      losing a notification is not an acceptable price for it.
+   3. It never throws. Whoever calls it has already stored the comment. */
 async function encolar(env, datos) {
   const conAdjuntos = (datos.adjuntos || []).length > 0;
 
-  /* Cuatro motivos para no diferir, y el cuarto es el que casi se cuela: sin URL pública
-     configurada, un adjunto que no cabe en el correo no se puede enlazar, así que
-     diferirlo lo haría desaparecer sin decir nada (queda en R2 y nadie lo alcanza).
-     Fallar cerrado aquí = seguir haciendo lo de antes, que funciona. */
+  /* Four reasons not to defer, and the fourth is the one that nearly slipped through:
+     with no public URL configured, an attachment that does not fit in the email cannot be
+     linked, so deferring it would make it vanish without a word (it sits in R2 and nobody
+     can reach it). Failing closed here = keep doing what worked before. */
   if (datos.tipo === 'eliminado' || env.TANDAS === 'no' ||
       !env.TANDAS_DO || !env.ADJUNTOS || !env.DB ||
       (conAdjuntos && !env.BASE_PUBLICA)) {
@@ -462,7 +521,14 @@ async function encolar(env, datos) {
   try {
     const guardados = [];
     for (const a of datos.adjuntos || []) {
-      const clave = `${datos.site}/${new Date().toISOString().slice(0, 10).replace(/-/g, '')}/${claveAleatoria()}/${a.filename}`;
+      /* 🔒 El id del comentario va DENTRO de la clave, y no es cosmético: es lo único
+         que permite borrar los ficheros de un comentario cuando se borra el comentario.
+         Antes aquí iba la fecha, y como la fila de la cola (la única que guardaba las
+         claves) se borra al enviarse el correo, después de eso no había forma de saber
+         qué objetos de R2 eran de quién: se quedaban para siempre.
+         En una respuesta, `datos.id` es el id del comentario PADRE (lo pone responder()),
+         así que borrar el comentario se lleva también los adjuntos de sus respuestas. */
+      const clave = `${datos.site}/${datos.id}/${claveAleatoria()}/${a.filename}`;
       await env.ADJUNTOS.put(clave, a.datos, { httpMetadata: { contentType: a.contentType } });
       guardados.push({ clave, nombre: a.filename, tipo: a.contentType, bytes: a.datos.byteLength });
     }
@@ -481,10 +547,10 @@ async function encolar(env, datos) {
     await stub.encolar(datos.site);
   } catch (e) {
     console.error('feedtack: la cola fallo, se avisa en el acto', e && e.message);
-    /* 🔒 Antes de mandarlo a mano hay que SACARLO de la cola. Si se queda ahí, la tanda
-       siguiente lo arrastra y el mismo aviso sale dos veces. Y si el DELETE no borra
-       nada es que ya lo mandó la tanda (o lo tiene en vuelo): entonces aquí no se manda
-       nada, porque eso sería el duplicado que se intenta evitar. */
+    /* 🔒 Before sending it by hand it has to be TAKEN OUT of the queue. Left there, the
+       next batch drags it along and the same notification goes out twice. And if the
+       DELETE removes nothing, the batch already sent it (or has it in flight): then
+       nothing is sent here, because that would be the duplicate this avoids. */
     if (filaId) {
       const borrado = await seguro(() => env.DB.prepare(
         'DELETE FROM avisos_pendientes WHERE id = ? AND enviado IS NULL AND reclamo IS NULL'
@@ -495,17 +561,18 @@ async function encolar(env, datos) {
   }
 }
 
-/* Envuelve algo que no debe poder tumbar la petición: el comentario del cliente ya está
-   guardado y un fallo del aviso no puede devolverle un error (volvería a escribirlo). */
+/* Wraps something that must not be able to bring the request down: the client's comment
+   is already stored and a failed notification cannot hand them an error (they would just
+   write it again). */
 async function seguro(fn, qué) {
   try { return await fn(); }
   catch (e) { console.error(`feedtack: fallo en ${qué}:`, e && e.message); return null; }
 }
 
-/* /salud dice si la agrupación está DE VERDAD en pie. Existe por un modo de fallo mudo:
-   si el esquema no se ha aplicado, cada encolar revienta, cae al aviso inmediato, y todo
-   parece funcionar igual que siempre (un correo por evento) sin que nada avise de que la
-   agrupación nunca se activó. Aquí eso se ve, y una cola con avisos viejos también. */
+/* /salud says whether batching is REALLY up. It exists because of a mute failure mode:
+   if the schema was never applied, every enqueue blows up, falls back to the immediate
+   email, and everything looks exactly as it always did (one email per event) with nothing
+   saying batching never came on. Here that shows, and so does a queue going stale. */
 async function salud(env, cors) {
   const base = { ok: true, servicio: 'feedtack', tandas: env.TANDAS === 'no' ? 'apagadas' : 'activas' };
   if (!env.DB) return json({ ...base, cola: 'sin base de datos' }, 200, cors);
@@ -516,7 +583,7 @@ async function salud(env, cors) {
     const minutos = r && r.viejo ? Math.round((Date.now() - Date.parse(r.viejo)) / 60000) : 0;
     return json({ ...base, cola: { pendientes: r ? r.n : 0, mas_viejo_minutos: minutos } }, 200, cors);
   } catch (e) {
-    /* No es "ok": la agrupación está configurada y no puede funcionar. */
+    /* Not "ok": batching is configured and cannot work. */
     return json({
       ok: false, servicio: 'feedtack', tandas: 'configuradas pero SIN TABLA',
       cola: 'falta avisos_pendientes: aplica worker/esquema.sql', detalle: String(e && e.message)
@@ -525,10 +592,13 @@ async function salud(env, cors) {
 }
 
 async function servirAdjunto(clave, env, metodo) {
-  /* Se exige la forma completa de la clave (web / fecha / 32 al azar / nombre). Sin esto
-     una clave a medias sería una invitación a probar prefijos, y aunque R2 no sirve
-     prefijos, el que mira los logs no distinguiría un tanteo de una descarga normal. */
-  if (!env.ADJUNTOS || !/^[\w.-]+\/\d{8}\/[0-9a-f]{32}\/.+$/.test(clave)) {
+  /* The full shape of the key is required (site / date / 32 random / name). Without it a
+     half key would be an invitation to try prefixes, and although R2 does not serve
+     prefixes, whoever reads the logs could not tell probing from a normal download. */
+  /* Two shapes are accepted: the old one with a date (`site/YYYYMMDD/...`) and the one
+     with the comment id (`site/<uuid>/...`). The old one has to keep working or every
+     attachment link in an email already sent would start answering 404. */
+  if (!env.ADJUNTOS || !/^[\w.-]+\/[\w-]{8,40}\/[0-9a-f]{32}\/.+$/.test(clave)) {
     return new Response('no encontrado', { status: 404 });
   }
   const obj = await env.ADJUNTOS.get(clave);
@@ -538,11 +608,11 @@ async function servirAdjunto(clave, env, metodo) {
   obj.writeHttpMetadata(cabeceras);
   const tipo = cabeceras.get('Content-Type') || 'application/octet-stream';
 
-  /* 🔒 El fichero lo ha subido el cliente y el tipo lo eligió su navegador, así que aquí
-     se sirve como sospechoso: solo las imágenes de verdad se abren en el navegador, y
-     todo lo demás se descarga. Un SVG (o un HTML disfrazado) servido `inline` ejecutaría
-     su propio script en el dominio del worker. `nosniff` cierra la otra mitad: sin él,
-     el navegador puede decidir por su cuenta que un PNG es HTML. */
+  /* 🔒 The file was uploaded by the client and its type was chosen by their browser, so
+     it is served as a suspect: only real images open in the browser, everything else is
+     downloaded. An SVG (or an HTML in disguise) served `inline` would run its own script
+     on the worker's domain. `nosniff` closes the other half: without it, the browser can
+     decide on its own that a PNG is HTML. */
   const seguras = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
   const nombre = nombreSeguro(clave.split('/').pop());
   cabeceras.set('Content-Disposition',
@@ -567,9 +637,9 @@ function huella(s) {
 const claveAleatoria = () =>
   [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
 
-/* Una instancia por web (`idFromName(site)`), así que dos webs no se mezclan nunca en el
-   mismo correo y el reloj de una no arrastra a la otra. Es de un solo hilo por instancia:
-   dos comentarios simultáneos no pueden abrir dos ventanas ni mandar dos correos. */
+/* One instance per site (`idFromName(site)`), so two sites never mix into the same email
+   and one site's clock never drags another's. It is single-threaded per instance: two
+   simultaneous comments cannot open two windows or send two emails. */
 export class Tandas extends DurableObject {
   async encolar(site) {
     await this.ctx.storage.put('site', site);
@@ -582,8 +652,8 @@ export class Tandas extends DurableObject {
       await this.ctx.storage.put('n', 0);
       return await this.enviar('corte');
     }
-    /* La ventana se abre con el PRIMERO y no se toca después: si cada evento la
-       reiniciara, una conversación seguida aplazaría el correo sin final. */
+    /* The window opens with the FIRST one and is not touched afterwards: if every event
+       reset it, a running conversation would postpone the email forever. */
     if ((await this.ctx.storage.getAlarm()) == null) {
       const minutos = Number(this.env.VENTANA_MINUTOS || VENTANA_MINUTOS);
       await this.ctx.storage.setAlarm(Date.now() + Math.max(1000, minutos * 60000));
@@ -594,11 +664,11 @@ export class Tandas extends DurableObject {
     await this.enviar('ventana');
   }
 
-  /* Una sola tanda en vuelo. Un `await` que no sea del almacén del Durable Object (D1,
-     R2, Resend) NO impide que le entren eventos nuevos, así que sin este cerrojo el
-     corte por número reentra mientras se sube a Resend. El cerrojo en memoria evita el
-     trabajo repetido; lo que de verdad garantiza que no salga dos veces es la reserva
-     en la base, porque la instancia puede reiniciarse y perder esta variable. */
+  /* One batch in flight. An `await` that is not on the Durable Object's own storage (D1,
+     R2, Resend) does NOT stop new events coming in, so without this lock the count
+     cut-off re-enters while the upload to Resend is happening. The in-memory lock avoids
+     the repeated work; what really guarantees it does not go out twice is the reservation
+     in the database, because the instance can restart and lose this variable. */
   async enviar(motivo) {
     if (this.enviando) { this.pendienteOtra = true; return; }
     this.enviando = true;
@@ -615,10 +685,10 @@ export class Tandas extends DurableObject {
     const ahora = new Date();
     const muerta = new Date(ahora.getTime() - 15 * 60000).toISOString();
 
-    /* RESERVA atómica: un solo UPDATE se lleva las filas y devuelve las que se ha
-       llevado. Quien no se las lleve no ve nada y no manda nada. Se recogen también las
-       reservas muertas (más de 15 minutos), que es como se recupera un envío que se
-       quedó a medias porque el worker se murió. */
+    /* Atomic RESERVATION: a single UPDATE takes the rows and returns the ones it took.
+       Whoever does not take them sees nothing and sends nothing. Dead reservations (older
+       than 15 minutes) are picked up too, which is how a send that was left half done
+       because the worker died gets recovered. */
     let pendientes = [];
     try {
       const { results } = await this.env.DB.prepare(
@@ -628,8 +698,9 @@ export class Tandas extends DurableObject {
       ).bind(reclamo, ahora.toISOString(), site, muerta).all();
       pendientes = (results || []).sort((a, b) => (a.creado < b.creado ? -1 : 1));
     } catch (e) {
-      /* Si la base no contesta, la ventana NO se puede quedar cerrada sobre avisos que
-         nadie ha mandado: se vuelve a intentar. Es el fallo que deja el buzón mudo. */
+      /* If the database does not answer, the window must NOT stay closed over
+         notifications nobody sent: it retries. That is the failure that leaves the
+         inbox silent. */
       console.error('feedtack: no se pudo reservar la tanda de', site, e && e.message);
       await this.ctx.storage.setAlarm(Date.now() + 2 * 60000);
       return;
@@ -640,12 +711,12 @@ export class Tandas extends DurableObject {
     try {
       await enviarTanda(this.env, site, pendientes, motivo);
     } catch (e) {
-      /* Un fallo de Resend no pierde nada: se suelta la reserva, se cuenta el intento y
-         se vuelve a probar en dos minutos. A partir del quinto la tanda sale SIN
-         adjuntos, que es el motivo más probable de que Resend diga que no, así que al
-         menos el texto llega. Y a partir del décimo se deja de insistir: las filas se
-         quedan pendientes (las arrastra el evento siguiente) y salen en /salud como
-         cola vieja, en vez de reintentar en bucle para siempre. */
+      /* A Resend failure loses nothing: the reservation is released, the attempt is
+         counted and it tries again in two minutes. From the fifth on, the batch goes out
+         WITHOUT attachments, which is the likeliest reason for Resend to say no, so at
+         least the text arrives. And from the tenth on it stops insisting: the rows stay
+         pending (the next event drags them along) and show up in /salud as a stale
+         queue, instead of retrying in a loop forever. */
       console.error('feedtack: la tanda de', site, 'no salio', e && e.message);
       await seguro(() => this.env.DB.prepare(
         'UPDATE avisos_pendientes SET reclamo = NULL, reclamado = NULL, intentos = intentos + 1 WHERE reclamo = ?'
@@ -656,19 +727,20 @@ export class Tandas extends DurableObject {
       return;
     }
 
-    /* Ya está enviado. Si este UPDATE falla, las filas se quedan reservadas y NO se
-       vuelven a mandar hasta que la reserva caduque: es la dirección correcta del error
-       (mejor un aviso repetido dentro de 15 minutos que uno perdido). */
+    /* Already sent. If this UPDATE fails, the rows stay reserved and are NOT sent again
+       until the reservation expires: that is the right direction for the error to fall
+       (better a repeated notification in 15 minutes than a lost one). */
     await seguro(() => this.env.DB.prepare(
       'UPDATE avisos_pendientes SET enviado = ? WHERE reclamo = ?'
     ).bind(ahora.toISOString(), reclamo).run(), 'marcar la tanda como enviada');
   }
 }
 
-/* Construye y manda el correo de una tanda. Los adjuntos se bajan de R2 y entran en el
-   correo mientras quepan en el presupuesto; los que no caben van enlazados, que es lo
-   mismo que hacía falta para los que ya venían de un intento fallido. */
+/* Builds and sends a batch email. Attachments are pulled from R2 and ride inside the
+   email while they fit the budget; the ones that do not fit are linked, which is the same
+   thing that was needed for those already coming from a failed attempt. */
 async function enviarTanda(env, site, pendientes, motivo) {
+  idiomaCorreo(env);
   const base = (env.BASE_PUBLICA || '').replace(/\/$/, '');
   const eventos = [];
   const adjuntosCorreo = [];
@@ -709,53 +781,171 @@ async function enviarTanda(env, site, pendientes, motivo) {
   await mandar(env, { asunto: asuntoTanda(site), html, adjuntos: adjuntosCorreo, site });
 }
 
-/* 🔴 El asunto de una tanda es FIJO por web, y esto se midió contra Gmail real el 8-sep:
-   con References e In-Reply-To idénticos pero el asunto cambiando ("3 comentarios" /
-   "2 comentarios"), Gmail abrió DOS hilos. Las cabeceras no bastan: Gmail exige además
-   que el asunto sea el mismo (solo perdona los "Re:"). Así que lo que varía se va al
-   cuerpo, y lo que hace de titular es la línea de vista previa (el preheader), que Gmail
-   sí muestra al lado del asunto en la lista.
-   El de ELIMINADO se queda con asunto propio a propósito: es el único rastro de algo que
-   ya no está y no puede quedar enterrado dentro de un hilo de cuarenta correos. */
+/* 🔴 A batch's subject is FIXED per site, and this was measured against real Gmail on 8
+   September: with identical References and In-Reply-To but a changing subject ("3
+   comments" / "2 comments"), Gmail opened TWO threads. The headers are not enough: Gmail
+   also demands the subject be the same (it only forgives "Re:"). So whatever varies goes
+   into the body, and what acts as the headline is the preview line (the preheader), which
+   Gmail does show next to the subject in the list.
+   The DELETED one keeps its own subject on purpose: it is the only trace of something
+   that is no longer there and cannot end up buried inside a forty-email thread. */
 function asuntoTanda(site) {
   return `💬 Feedtack · ${site}`;
 }
 
-/* El titular de verdad: lo que Gmail pinta detrás del asunto en la lista. */
+/* The real headline: what Gmail paints after the subject in the list. */
 function resumenTanda(eventos, motivo) {
   if (eventos.length === 1) {
     const e = eventos[0];
-    return `${MOTE[e.tipo] || ''}${resumir(e.mensaje, e.senalados)}`;
+    return `${T.mote[e.tipo] || ''}${resumir(e.mensaje, e.senalados)}`;
   }
   const cuenta = {};
   eventos.forEach(e => { cuenta[e.tipo] = (cuenta[e.tipo] || 0) + 1; });
-  const partes = [
-    cuenta.nuevo ? `${cuenta.nuevo} comentario${cuenta.nuevo > 1 ? 's' : ''}` : '',
-    cuenta.respuesta ? `${cuenta.respuesta} respuesta${cuenta.respuesta > 1 ? 's' : ''}` : '',
-    cuenta.editado ? `${cuenta.editado} editado${cuenta.editado > 1 ? 's' : ''}` : '',
-    cuenta.reabierto ? `${cuenta.reabierto} reabierto${cuenta.reabierto > 1 ? 's' : ''}` : ''
-  ].filter(Boolean).join(', ');
-  const lleno = motivo === 'corte' ? ' (tanda llena)' : '';
+  const partes = ['nuevo', 'respuesta', 'editado', 'reabierto']
+    .map(k => (cuenta[k] ? T.cuenta[k](cuenta[k]) : ''))
+    .filter(Boolean).join(', ');
+  const lleno = motivo === 'corte' ? ` ${T.tandaLlena}` : '';
   return `${partes}${lleno}: "${resumir(eventos[0].mensaje, eventos[0].senalados)}"`;
 }
 
-/* Bloque invisible que Gmail usa como línea de vista previa. Va antes de todo. */
+/* Invisible block Gmail uses as the preview line. It goes before everything else. */
 function preheader(texto) {
   return `<div style="display:none;font-size:1px;color:#f1f5f9;max-height:0;overflow:hidden">${esc(texto)}</div>`;
+}
+
+/* ─────────────────────────────────────────────── language of the notification email
+   Every word a Feedtack email says is in this table. Spanish is the default because
+   that is what every deployment made before this existed already receives; set
+
+     EMAIL_LANG = "en"
+
+   in wrangler.toml (or as a secret) to get the English one. Nothing else in the
+   project reads it: the widget picks its own language from the page.
+
+   This is the first English-named variable in the Worker on purpose. The rest
+   (DESTINO, REMITENTE, ORIGENES_PERMITIDOS...) are still Spanish, and renaming those
+   breaks existing deployments, so it is a separate decision. */
+const IDIOMAS = {
+  es: {
+    locale: 'es-ES', html: 'es',
+    pagina: 'Página', url: 'URL', enviadoPor: 'Enviado por', pantalla: 'Pantalla',
+    navegador: 'Navegador', momento: 'Momento',
+    ventanaMonitor: (v, p) => `${v} (ventana), ${p} (monitor)`,
+    sinIdentificar: 'sin identificar',
+    portada: 'Portada',
+    antesDecia: 'Antes decía',
+    vacio: '(vacío)',
+    senalados: n => (n > 1 ? `${n} elementos señalados` : 'Elemento señalado'),
+    desdeArriba: (w, h, y) => `${w}×${h} px, a ${y} px del principio de la página`,
+    sinTexto: 'Sin texto, mira los adjuntos.',
+    sinTextoTanda: 'Sin texto, mira lo señalado y los adjuntos.',
+    adjuntos: n => `${n} adjunto${n > 1 ? 's' : ''}`,
+    adjunto: 'adjunto',
+    noCabia: 'no cabía en el correo, se abre con el enlace',
+    banda: {
+      nuevo: 'Nuevo comentario en', editado: 'Comentario EDITADO en',
+      reabierto: 'Comentario REABIERTO en', eliminado: 'Comentario ELIMINADO en',
+      respuesta: 'Respuesta en un comentario de'
+    },
+    mote: { nuevo: '', editado: '[editado] ', reabierto: '[reabierto] ',
+            eliminado: '[ELIMINADO] ', respuesta: '[respuesta] ' },
+    tarjeta: { nuevo: 'Comentario nuevo', respuesta: 'Respuesta',
+               editado: 'Comentario editado', reabierto: 'Comentario reabierto' },
+    cuenta: {
+      nuevo: n => `${n} comentario${n > 1 ? 's' : ''}`,
+      respuesta: n => `${n} respuesta${n > 1 ? 's' : ''}`,
+      editado: n => `${n} editado${n > 1 ? 's' : ''}`,
+      reabierto: n => `${n} reabierto${n > 1 ? 's' : ''}`
+    },
+    tandaLlena: '(tanda llena)',
+    tandaLlenaCorta: 'tanda llena',
+    franja: (a, b) => `${a} a ${b}`,
+    novedades: (n, site) => `${n} novedades en ${site}`,
+    paginas: n => `${n} páginas`,
+    borrado: porSuAutor => 'Este comentario se ha <b>borrado</b> de la lista' +
+      (porSuAutor ? ', y lo ha borrado <b>quien lo escribió</b>' : ' desde el equipo') +
+      '. Esta copia es el único rastro que queda.<br>',
+    pie: site => `Enviado desde el widget Feedtack, instalado en la web de ${site}. ` +
+      'Responder a este correo NO llega al cliente.',
+    pieTanda: (min, corte, site) => `Una tanda reúne lo que llega en ${min} minutos desde ` +
+      `el primer aviso, o ${corte} avisos, lo que pase antes. Enviado desde el widget ` +
+      `Feedtack instalado en la web de ${site}. Responder a este correo NO llega al cliente.`,
+    desconocido: 'desconocido',
+    en: 'en'
+  },
+  en: {
+    locale: 'en-GB', html: 'en',
+    pagina: 'Page', url: 'URL', enviadoPor: 'Sent by', pantalla: 'Screen',
+    navegador: 'Browser', momento: 'When',
+    ventanaMonitor: (v, p) => `${v} (window), ${p} (monitor)`,
+    sinIdentificar: 'not identified',
+    portada: 'Home',
+    antesDecia: 'It used to say',
+    vacio: '(empty)',
+    senalados: n => (n > 1 ? `${n} elements pointed at` : 'Element pointed at'),
+    desdeArriba: (w, h, y) => `${w}×${h} px, ${y} px from the top of the page`,
+    sinTexto: 'No text, look at the attachments.',
+    sinTextoTanda: 'No text, look at what was pointed at and at the attachments.',
+    adjuntos: n => `${n} attachment${n > 1 ? 's' : ''}`,
+    adjunto: 'attachment',
+    noCabia: 'too big for the email, open it with the link',
+    banda: {
+      nuevo: 'New comment on', editado: 'Comment EDITED on',
+      reabierto: 'Comment REOPENED on', eliminado: 'Comment DELETED on',
+      respuesta: 'Reply to a comment on'
+    },
+    mote: { nuevo: '', editado: '[edited] ', reabierto: '[reopened] ',
+            eliminado: '[DELETED] ', respuesta: '[reply] ' },
+    tarjeta: { nuevo: 'New comment', respuesta: 'Reply',
+               editado: 'Comment edited', reabierto: 'Comment reopened' },
+    cuenta: {
+      nuevo: n => `${n} comment${n > 1 ? 's' : ''}`,
+      respuesta: n => `${n} repl${n > 1 ? 'ies' : 'y'}`,
+      editado: n => `${n} edited`,
+      reabierto: n => `${n} reopened`
+    },
+    tandaLlena: '(batch full)',
+    tandaLlenaCorta: 'batch full',
+    franja: (a, b) => `${a} to ${b}`,
+    novedades: (n, site) => `${n} updates on ${site}`,
+    paginas: n => `${n} pages`,
+    borrado: porSuAutor => 'This comment has been <b>deleted</b> from the list' +
+      (porSuAutor ? ', by <b>whoever wrote it</b>' : ', by the team') +
+      '. This copy is the only trace left.<br>',
+    pie: site => `Sent from the Feedtack widget installed on ${site}. ` +
+      'Replying to this email does NOT reach the client.',
+    pieTanda: (min, corte, site) => `A batch gathers whatever arrives within ${min} minutes ` +
+      `of the first notification, or ${corte} notifications, whichever comes first. Sent from ` +
+      `the Feedtack widget installed on ${site}. Replying to this email does NOT reach the client.`,
+    desconocido: 'unknown',
+    en: 'on'
+  }
+};
+
+/* Resolved once per email, from the two places that build one (avisar and enviarTanda).
+   It is configuration, constant for a deployment, so a module-level value is enough:
+   there is no per-request state here to leak between isolates. */
+let T = IDIOMAS.es;
+let ZONA = 'Europe/Madrid';
+function idiomaCorreo(env) {
+  T = IDIOMAS[String(env.EMAIL_LANG || 'es').toLowerCase().slice(0, 2)] || IDIOMAS.es;
+  ZONA = env.ZONA_HORARIA || 'Europe/Madrid';
 }
 
 // ────────────────────────────────────────────────────────────────── correo
 
 const ICONO = { nuevo: '💬', editado: '✏️', reabierto: '🔁', eliminado: '🗑️', respuesta: '↩️' };
-const MOTE = { nuevo: '', editado: '[editado] ', reabierto: '[reabierto] ', eliminado: '[ELIMINADO] ', respuesta: '[respuesta] ' };
+/* Los motes y las bandas viven ahora en IDIOMAS (T.mote, T.banda). */
 
 async function avisar(env, datos) {
-  const resumen = `${MOTE[datos.tipo] || ''}${resumir(datos.mensaje, datos.senalados)}`;
-  /* El borrado lleva asunto propio (y por tanto su propio hilo) a propósito: es el único
-     rastro de algo que ya no existe. Lo demás usa el asunto fijo de la web, para que caiga
-     en el mismo hilo que las tandas aunque haya salido por el camino de emergencia. */
+  idiomaCorreo(env);
+  const resumen = `${T.mote[datos.tipo] || ''}${resumir(datos.mensaje, datos.senalados)}`;
+  /* A deletion carries its own subject (and therefore its own thread) on purpose: it is
+     the only trace of something that no longer exists. Everything else uses the site's
+     fixed subject, so it lands in the same thread as the batches even when it went out
+     through the emergency path. */
   const asunto = datos.tipo === 'eliminado'
-    ? `🗑️ Feedtack · ${datos.site}: [ELIMINADO] ${resumir(datos.mensaje, datos.senalados)}`
+    ? `🗑️ Feedtack · ${datos.site}: ${T.mote.eliminado}${resumir(datos.mensaje, datos.senalados)}`
     : `💬 Feedtack · ${datos.site}`;
   await mandar(env, {
     asunto,
@@ -772,11 +962,12 @@ async function mandar(env, { asunto, html, adjuntos, site }) {
     return;
   }
 
-  /* Todo lo de una web cuelga del mismo mensaje inventado, así que Gmail lo colapsa en
-     UN hilo por web en vez de dejar 40 correos sueltos en la bandeja. El id no existe en
-     ningún buzón y no hace falta que exista: lo que agrupa es que todos lo citen.
-     Lleva pegada una huella del nombre CRUDO porque el saneado junta cosas distintas
-     ("web nueva" y "web-nueva" darían el mismo id, y dos webs compartirían hilo). */
+  /* Everything from one site hangs off the same made-up message, so Gmail collapses it
+     into ONE thread per site instead of leaving 40 loose emails in the inbox. The id
+     exists in no mailbox and does not need to: what groups them is that they all cite it.
+     It carries a fingerprint of the RAW name because sanitising merges different things
+     ("new site" and "new-site" would give the same id, and two sites would share a
+     thread). */
   const crudo = String(site || 'sin-identificar');
   const raiz = `<feedtack.${crudo.replace(/[^\w.-]/g, '-')}.${huella(crudo)}@feedtack.dev>`;
 
@@ -830,7 +1021,7 @@ function cabecerasCors(origen, env) {
 
 const lista = s => (s || '').split(',').map(x => x.trim()).filter(Boolean);
 
-/* Comparación en tiempo constante para no filtrar la clave carácter a carácter. */
+/* Constant-time comparison, so the key does not leak one character at a time. */
 function esAdmin(clave, env) {
   const a = String(clave == null ? '' : clave);
   const b = String(env.CLAVE_ADMIN || '');
@@ -882,55 +1073,51 @@ function esc(s) {
 function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], adjuntos = [], tipo, porSuAutor }) {
   const c = contexto || {};
   const filas = [
-    ['Página', c.titulo],
-    ['URL', c.url],
-    ['Enviado por', autor || 'sin identificar'],
-    ['Pantalla', c.viewport ? `${c.viewport} (ventana), ${c.pantalla} (monitor)` : ''],
-    ['Navegador', navegadorLegible(c.navegador)],
-    ['Momento', c.momento ? new Date(c.momento).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }) : '']
+    [T.pagina, c.titulo],
+    [T.url, c.url],
+    [T.enviadoPor, autor || T.sinIdentificar],
+    [T.pantalla, c.viewport ? T.ventanaMonitor(c.viewport, c.pantalla) : ''],
+    [T.navegador, navegadorLegible(c.navegador)],
+    [T.momento, c.momento ? new Date(c.momento).toLocaleString(T.locale, { timeZone: ZONA }) : '']
   ].filter(([, v]) => v);
 
-  const banda = {
-    nuevo: ['#0f172a', 'Nuevo comentario en'],
-    editado: ['#78350f', 'Comentario EDITADO en'],
-    reabierto: ['#7f1d1d', 'Comentario REABIERTO en'],
-    eliminado: ['#450a0a', 'Comentario ELIMINADO en'],
-    respuesta: ['#1e293b', 'Respuesta en un comentario de']
-  }[tipo] || ['#0f172a', 'Nuevo comentario en'];
+  const COLOR = { nuevo: '#0f172a', editado: '#78350f', reabierto: '#7f1d1d',
+                  eliminado: '#450a0a', respuesta: '#1e293b' };
+  const banda = [COLOR[tipo] || '#0f172a', T.banda[tipo] || T.banda.nuevo];
 
   const bloqueAnterior = anterior != null ? `
     <div style="margin:0 0 18px;padding:12px 14px;background:#fef3c7;border-radius:8px">
-      <div style="font:600 11.5px/1.4 -apple-system,sans-serif;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Antes decía</div>
-      <div style="font:400 14px/1.55 -apple-system,sans-serif;color:#78350f;text-decoration:line-through;white-space:pre-wrap">${esc(anterior) || '(vacío)'}</div>
+      <div style="font:600 11.5px/1.4 -apple-system,sans-serif;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">${T.antesDecia}</div>
+      <div style="font:400 14px/1.55 -apple-system,sans-serif;color:#78350f;text-decoration:line-through;white-space:pre-wrap">${esc(anterior) || T.vacio}</div>
     </div>` : '';
 
   const bloqueSenalado = senalados.length ? `
     <div style="margin:0 0 20px;padding:14px 16px;background:#eef2ff;border-left:3px solid #4f46e5;border-radius:0 8px 8px 0">
-      <div style="font:600 12px/1.4 -apple-system,sans-serif;color:#4338ca;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">${senalados.length > 1 ? senalados.length + ' elementos señalados' : 'Elemento señalado'}</div>
+      <div style="font:600 12px/1.4 -apple-system,sans-serif;color:#4338ca;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">${T.senalados(senalados.length)}</div>
       ${senalados.map((s, i) => `
       <div style="${i ? 'margin-top:14px;padding-top:14px;border-top:1px solid #dfe3fb' : ''}">
         ${senalados.length > 1 ? `<div style="font:600 12px/1.4 -apple-system,sans-serif;color:#6366f1;margin-bottom:4px">${i + 1}</div>` : ''}
         ${s.texto ? `<div style="font:400 14px/1.5 -apple-system,sans-serif;color:#1e1b4b;margin-bottom:6px">"${esc(s.texto)}"</div>` : ''}
         <code style="display:block;font:400 12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#4338ca;word-break:break-all">${esc(s.selector)}</code>
-        ${s.rect ? `<div style="font:400 12px/1.5 -apple-system,sans-serif;color:#6366f1;margin-top:6px">${s.rect.w}×${s.rect.h} px, a ${s.rect.y} px del principio de la página</div>` : ''}
+        ${s.rect ? `<div style="font:400 12px/1.5 -apple-system,sans-serif;color:#6366f1;margin-top:6px">${T.desdeArriba(s.rect.w, s.rect.h, s.rect.y)}</div>` : ''}
       </div>`).join('')}
     </div>` : '';
 
   const bloqueAdjuntos = adjuntos.length ? `
     <div style="margin:20px 0 0;padding-top:16px;border-top:1px solid #e2e8f0">
-      <div style="font:600 12px/1.4 -apple-system,sans-serif;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">${adjuntos.length} adjunto${adjuntos.length > 1 ? 's' : ''}</div>
+      <div style="font:600 12px/1.4 -apple-system,sans-serif;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">${T.adjuntos(adjuntos.length)}</div>
       ${adjuntos.map(lineaAdjunto).join('')}
     </div>` : '';
 
-  return `<!doctype html><html lang="es"><body style="margin:0;padding:24px;background:#f1f5f9">
+  return `<!doctype html><html lang="${T.html}"><body style="margin:0;padding:24px;background:#f1f5f9">
   <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.1)">
     <div style="padding:20px 24px;background:${banda[0]}">
       <div style="font:600 16px/1.4 -apple-system,sans-serif;color:#fff">${banda[1]} ${esc(site)}</div>
-      <div style="font:400 13px/1.5 -apple-system,sans-serif;color:#94a3b8;margin-top:2px">${esc(c.ruta === '/' ? 'Portada' : (c.ruta || ''))}</div>
+      <div style="font:400 13px/1.5 -apple-system,sans-serif;color:#94a3b8;margin-top:2px">${esc(c.ruta === '/' ? T.portada : (c.ruta || ''))}</div>
     </div>
     <div style="padding:24px">
       ${bloqueAnterior}
-      ${mensaje ? `<div style="font:400 15px/1.65 -apple-system,sans-serif;color:#0f172a;white-space:pre-wrap;margin-bottom:20px">${esc(mensaje)}</div>` : '<div style="font:400 14px/1.6 -apple-system,sans-serif;color:#94a3b8;font-style:italic;margin-bottom:20px">Sin texto, mira los adjuntos.</div>'}
+      ${mensaje ? `<div style="font:400 15px/1.65 -apple-system,sans-serif;color:#0f172a;white-space:pre-wrap;margin-bottom:20px">${esc(mensaje)}</div>` : `<div style="font:400 14px/1.6 -apple-system,sans-serif;color:#94a3b8;font-style:italic;margin-bottom:20px">${T.sinTexto}</div>`}
       ${bloqueSenalado}
       <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">
         ${filas.map(([k, v]) => `
@@ -942,40 +1129,42 @@ function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], a
       ${bloqueAdjuntos}
     </div>
     <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font:400 12px/1.5 -apple-system,sans-serif;color:#94a3b8">
-      ${tipo === 'eliminado' ? 'Este comentario se ha <b>borrado</b> de la lista' + (porSuAutor ? ', y lo ha borrado <b>quien lo escribió</b>' : ' desde el equipo') + '. Esta copia es el único rastro que queda.<br>' : ''}Enviado desde el widget Feedtack, instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
+      ${tipo === 'eliminado' ? T.borrado(porSuAutor) : ''}${T.pie(esc(site))}
     </div>
   </div>
 </body></html>`;
 }
 
-/* Una línea de adjunto. Sirve para los dos caminos: el inmediato (que solo sabe el
-   nombre) y el de tanda (que además sabe si viaja dentro del correo o enlazado). Un
-   adjunto que NO viaja se DICE, con su tamaño: si no, parece que no había captura. */
+/* One attachment line. It serves both paths: the immediate one (which only knows the
+   name) and the batch one (which also knows whether it rides inside the email or is
+   linked). An attachment that does NOT ride is SAID SO, with its size: otherwise it looks
+   as if there was no screenshot at all. */
 function lineaAdjunto(a) {
-  const nombre = esc(a.nombre || a.filename || 'adjunto');
+  const nombre = esc(a.nombre || a.filename || T.adjunto);
   const mb = a.bytes ? ` (${(a.bytes / 1048576).toFixed(1)} MB)` : '';
   const cuerpo = a.enlace
     ? `<a href="${esc(a.enlace)}" style="color:#4f46e5;text-decoration:none">${nombre}</a>${mb}`
     : `${nombre}${mb}`;
   const nota = a.enlace && a.adjuntado === false
-    ? ' <span style="color:#b45309">no cabía en el correo, se abre con el enlace</span>'
+    ? ` <span style="color:#b45309">${T.noCabia}</span>`
     : '';
   return `<div style="font:400 13px/1.7 -apple-system,sans-serif;color:#475569">📎 ${cuerpo}${nota}</div>`;
 }
 
-/* El correo de una tanda: una tarjeta por evento, en orden, y arriba lo que hay que
-   saber sin abrir nada (cuántas cosas y de qué páginas). Cuando la tanda trae UN solo
-   evento no se usa esta plantilla, se usa la de siempre: un resumen de una cosa es peor
-   que la cosa. */
+/* The batch email: one card per event, in order, and at the top what you need to know
+   without opening anything (how many things and from which pages). When a batch carries a
+   SINGLE event this template is not used, the usual one is: a summary of one thing is
+   worse than the thing. */
 function plantillaTanda(site, eventos, motivo) {
   const rutas = [...new Set(eventos.map(e => (e.contexto || {}).ruta || '/'))];
   const desde = new Date(eventos[0].creado);
   const hasta = new Date(eventos[eventos.length - 1].creado);
-  const franja = `${desde.toLocaleTimeString('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' })} a ${hasta.toLocaleTimeString('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' })}`;
+  const hora = d => d.toLocaleTimeString(T.locale, { timeZone: ZONA, hour: '2-digit', minute: '2-digit' });
+  const franja = T.franja(hora(desde), hora(hasta));
 
   const tarjetas = eventos.map((e, i) => {
     const c = e.contexto || {};
-    const cabecera = `${ICONO[e.tipo] || '💬'} ${{ nuevo: 'Comentario nuevo', respuesta: 'Respuesta', editado: 'Comentario editado', reabierto: 'Comentario reabierto' }[e.tipo] || e.tipo}`;
+    const cabecera = `${ICONO[e.tipo] || '💬'} ${T.tarjeta[e.tipo] || e.tipo}`;
     const senal = (e.senalados || []).map(s => `
         <div style="margin-top:8px">
           ${s.texto ? `<div style="font:400 13px/1.5 -apple-system,sans-serif;color:#1e1b4b">"${esc(s.texto)}"</div>` : ''}
@@ -985,28 +1174,28 @@ function plantillaTanda(site, eventos, motivo) {
       <div style="${i ? 'margin-top:14px;' : ''}border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
         <div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0">
           <div style="font:600 12.5px/1.4 -apple-system,sans-serif;color:#334155">${cabecera}
-            <span style="font-weight:400;color:#94a3b8"> · ${esc(e.autor || 'sin identificar')} · ${new Date(e.creado).toLocaleTimeString('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' })}</span>
+            <span style="font-weight:400;color:#94a3b8"> · ${esc(e.autor || T.sinIdentificar)} · ${hora(new Date(e.creado))}</span>
           </div>
-          <div style="font:400 12px/1.5 -apple-system,sans-serif;color:#64748b;margin-top:2px">${esc(c.titulo || '')}${c.url ? ` · <a href="${esc(c.url)}" style="color:#4f46e5;text-decoration:none">${esc(c.ruta === '/' ? 'Portada' : (c.ruta || ''))}</a>` : ''}</div>
+          <div style="font:400 12px/1.5 -apple-system,sans-serif;color:#64748b;margin-top:2px">${esc(c.titulo || '')}${c.url ? ` · <a href="${esc(c.url)}" style="color:#4f46e5;text-decoration:none">${esc(c.ruta === '/' ? T.portada : (c.ruta || ''))}</a>` : ''}</div>
         </div>
         <div style="padding:14px">
-          ${e.anterior != null && e.tipo === 'editado' ? `<div style="font:400 13px/1.5 -apple-system,sans-serif;color:#92400e;text-decoration:line-through;margin-bottom:8px">${esc(e.anterior) || '(vacío)'}</div>` : ''}
-          ${e.mensaje ? `<div style="font:400 14.5px/1.6 -apple-system,sans-serif;color:#0f172a;white-space:pre-wrap">${esc(e.mensaje)}</div>` : '<div style="font:400 13.5px/1.6 -apple-system,sans-serif;color:#94a3b8;font-style:italic">Sin texto, mira lo señalado y los adjuntos.</div>'}
+          ${e.anterior != null && e.tipo === 'editado' ? `<div style="font:400 13px/1.5 -apple-system,sans-serif;color:#92400e;text-decoration:line-through;margin-bottom:8px">${esc(e.anterior) || T.vacio}</div>` : ''}
+          ${e.mensaje ? `<div style="font:400 14.5px/1.6 -apple-system,sans-serif;color:#0f172a;white-space:pre-wrap">${esc(e.mensaje)}</div>` : `<div style="font:400 13.5px/1.6 -apple-system,sans-serif;color:#94a3b8;font-style:italic">${T.sinTextoTanda}</div>`}
           ${senal}
           ${(e.adjuntos || []).length ? `<div style="margin-top:10px">${e.adjuntos.map(lineaAdjunto).join('')}</div>` : ''}
         </div>
       </div>`;
   }).join('');
 
-  return `<!doctype html><html lang="es"><body style="margin:0;padding:24px;background:#f1f5f9">
+  return `<!doctype html><html lang="${T.html}"><body style="margin:0;padding:24px;background:#f1f5f9">
   <div style="max-width:640px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.1)">
     <div style="padding:20px 24px;background:#0f172a">
-      <div style="font:600 16px/1.4 -apple-system,sans-serif;color:#fff">${eventos.length} novedades en ${esc(site)}</div>
-      <div style="font:400 13px/1.5 -apple-system,sans-serif;color:#94a3b8;margin-top:2px">${franja} · ${rutas.length === 1 ? esc(rutas[0] === '/' ? 'Portada' : rutas[0]) : rutas.length + ' páginas'}${motivo === 'corte' ? ' · tanda llena' : ''}</div>
+      <div style="font:600 16px/1.4 -apple-system,sans-serif;color:#fff">${T.novedades(eventos.length, esc(site))}</div>
+      <div style="font:400 13px/1.5 -apple-system,sans-serif;color:#94a3b8;margin-top:2px">${franja} · ${rutas.length === 1 ? esc(rutas[0] === '/' ? T.portada : rutas[0]) : T.paginas(rutas.length)}${motivo === 'corte' ? ` · ${T.tandaLlenaCorta}` : ''}</div>
     </div>
     <div style="padding:20px 24px">${tarjetas}</div>
     <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font:400 12px/1.5 -apple-system,sans-serif;color:#94a3b8">
-      Una tanda reúne lo que llega en ${VENTANA_MINUTOS} minutos desde el primer aviso, o ${CORTE_COMENTARIOS} avisos, lo que pase antes. Enviado desde el widget Feedtack instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
+      ${T.pieTanda(VENTANA_MINUTOS, CORTE_COMENTARIOS, esc(site))}
     </div>
   </div>
 </body></html>`;
@@ -1019,7 +1208,7 @@ function navegadorLegible(ua) {
     [/Chrome\/([\d.]+)/, 'Chrome'], [/Version\/([\d.]+).*Safari/, 'Safari'],
     [/Firefox\/([\d.]+)/, 'Firefox']
   ];
-  let nav = 'desconocido';
+  let nav = T.desconocido;
   for (const [re, nombre] of m) {
     const r = ua.match(re);
     if (r) { nav = `${nombre} ${r[1].split('.')[0]}`; break; }
@@ -1029,5 +1218,5 @@ function navegadorLegible(ua) {
     : /Mac OS X/.test(ua) ? 'macOS'
     : /Windows/.test(ua) ? 'Windows'
     : /Linux/.test(ua) ? 'Linux' : '';
-  return so ? `${nav} en ${so}` : nav;
+  return so ? `${nav} ${T.en} ${so}` : nav;
 }

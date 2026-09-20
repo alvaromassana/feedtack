@@ -20,7 +20,7 @@ define( 'FEEDTACK_VERSION', '1.0.0' );
 define( 'FEEDTACK_OPCION', 'feedtack_ajustes' );
 
 /**
- * Valores por defecto.
+ * Defaults.
  */
 function feedtack_por_defecto() {
 	return array(
@@ -37,15 +37,15 @@ function feedtack_por_defecto() {
 }
 
 /**
- * De donde sale el fichero del widget.
+ * Where the widget file comes from.
  *
- * 🔒 Por defecto, de DENTRO del plugin. Antes el valor por defecto era la URL de jsDelivr
- * apuntando a @main, asi que cada web instalada seguia en vivo la rama principal del repo:
- * un push roto alla rompia el widget aqui. La copia local no depende de nadie.
+ * 🔒 By default, from INSIDE the plugin. The default used to be the jsDelivr URL pointing at
+ * @main, so every installed site was following the repository's main branch live: a broken
+ * push over there broke the widget over here. The local copy depends on nobody.
  *
- * 🔴 No se guarda la URL local en las opciones: plugins_url() cambia si la web cambia de
- * dominio o de carpeta, y una URL absoluta guardada se quedaria apuntando al sitio viejo.
- * Se resuelve en cada carga.
+ * 🔴 The local URL is not saved in the options: plugins_url() changes if the site moves
+ * domain or folder, and a saved absolute URL would keep pointing at the old one. It is
+ * resolved on every load.
  */
 function feedtack_url_script() {
 	$a = feedtack_ajustes();
@@ -60,12 +60,11 @@ function feedtack_ajustes() {
 }
 
 /**
- * ¿Toca cargarlo?
+ * Should it load?
  *
- * 🔒 Guardarraíl duro: en producción NO se carga salvo que alguien haya marcado
- * la casilla a propósito. Este widget es una herramienta de revisión interna;
- * si se cuela en la web publicada, cualquier visitante ve el botón, puede
- * escribir comentarios y puede leer los de los demás.
+ * 🔒 Hard guardrail: in production it does NOT load unless somebody ticked the box on
+ * purpose. This widget is an internal review tool; if it slips onto the published site,
+ * every visitor sees the button, can write comments and can read everyone else's.
  */
 function feedtack_debe_cargar() {
 	$a = feedtack_ajustes();
@@ -76,7 +75,7 @@ function feedtack_debe_cargar() {
 	if ( empty( $a['site'] ) || empty( $a['endpoint'] ) ) {
 		return false;
 	}
-	// Nada en el escritorio, ni en peticiones internas, ni en feeds.
+	// Nothing in the admin, nor in internal requests, nor in feeds.
 	if ( is_admin() || wp_doing_ajax() || wp_doing_cron() || is_feed() ) {
 		return false;
 	}
@@ -90,7 +89,7 @@ function feedtack_debe_cargar() {
 	}
 
 	/**
-	 * Último filtro por si un sitio necesita afinar (por rol, por página...).
+	 * Last filter, in case a site needs to narrow it down (by role, by page...).
 	 *
 	 * @param bool $cargar
 	 */
@@ -98,7 +97,7 @@ function feedtack_debe_cargar() {
 }
 
 /**
- * Inyecta el script en el pie. Una sola etiqueta: el widget no depende de nada más.
+ * Injects the script in the footer. One single tag: the widget depends on nothing else.
  */
 function feedtack_pintar() {
 	if ( ! feedtack_debe_cargar() ) {
@@ -120,7 +119,7 @@ function feedtack_pintar() {
 }
 add_action( 'wp_footer', 'feedtack_pintar', 99 );
 
-/* ─────────────────────────────── ajustes ─────────────────────────────── */
+/* ─────────────────────────────── settings ─────────────────────────────── */
 
 function feedtack_menu() {
 	add_options_page(
@@ -154,7 +153,7 @@ function feedtack_registrar() {
 add_action( 'admin_init', 'feedtack_registrar' );
 
 /**
- * Todo lo que entra del formulario se sanea aquí, sin excepción.
+ * Everything coming in from the form is sanitised here, with no exception.
  */
 function feedtack_sanear( $entrada ) {
 	$d     = feedtack_por_defecto();
@@ -169,9 +168,9 @@ function feedtack_sanear( $entrada ) {
 
 	foreach ( array( 'endpoint', 'script' ) as $campo ) {
 		$url = isset( $entrada[ $campo ] ) ? esc_url_raw( trim( $entrada[ $campo ] ) ) : '';
-		// Solo https: el widget viaja con el comentario del cliente.
+		// https only: the widget travels with the client's comment.
 		$salida[ $campo ] = ( $url && 0 === strpos( $url, 'https://' ) ) ? $url : $d[ $campo ];
-		// Los dos admiten vacio: el endpoint apaga el widget, el script usa la copia local.
+		// Both accept empty: an empty endpoint turns the widget off, an empty script uses the local copy.
 		if ( ! $url ) { $salida[ $campo ] = ''; }
 	}
 
@@ -190,9 +189,9 @@ function feedtack_sanear( $entrada ) {
 		? $entrada['posicion']
 		: $d['posicion'];
 
-	// Vacío = lo decide el atributo lang de la página. Hace falta cuando la web
-	// está en un idioma y quien la revisa habla otro (Arqués: web en inglés,
-	// diseñadoras en español), que es lo normal en una web de cliente.
+	// Empty = the page's lang attribute decides. This is needed when the site is in one
+	// language and whoever reviews it speaks another, which is the normal case on a client
+	// site: an English site being reviewed by a Spanish-speaking design team.
 	$idiomas = array( '', 'es', 'en' );
 	$salida['idioma'] = ( isset( $entrada['idioma'] ) && in_array( $entrada['idioma'], $idiomas, true ) )
 		? $entrada['idioma']
@@ -357,7 +356,7 @@ function feedtack_pagina_ajustes() {
 }
 
 /**
- * Al desinstalar, no dejamos basura en la base de datos.
+ * On uninstall, leave no rubbish behind in the database.
  */
 function feedtack_desinstalar() {
 	delete_option( FEEDTACK_OPCION );

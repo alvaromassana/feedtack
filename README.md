@@ -150,6 +150,13 @@ Open `worker/wrangler.toml` and set:
 `VENTANA_MINUTOS` and `CORTE_COMENTARIOS` control how comments are grouped into one email.
 The defaults are sensible; leave them alone until the volume tells you otherwise.
 
+Two optional ones:
+
+| Field | What to put |
+|---|---|
+| `EMAIL_LANG` | Language of the notification email you receive: `es` (the default) or `en`. Nothing else reads it: the widget picks its own language from the page or from `data-lang`. |
+| `ZONA_HORARIA` | The timezone the email shows times in, e.g. `Europe/London`. Defaults to `Europe/Madrid`. |
+
 #### Create the tables, deploy, and set the secrets
 
 ```bash
@@ -166,8 +173,35 @@ once more.
 #### Check it is up
 
 ```bash
-curl https://your-worker.workers.dev/salud      # {"ok":true}
+curl https://your-worker.workers.dev/health     # {"ok":true}
 ```
+
+<details>
+<summary>The HTTP API, if you want to build something else on it</summary>
+
+| Method | Route | What |
+|---|---|---|
+| `POST` | `/api/feedback` | create a comment (multipart: `site`, `mensaje`, `autor`, `autor_id`, `contexto`, `senalados`, `adjunto1..N`) |
+| `GET` | `/api/comments?site=X` | list a site's comments, with their replies |
+| `PATCH` | `/api/comments/:id` | edit the text (author only) |
+| `POST` | `/api/comments/:id/replies` | reply inside a comment |
+| `POST` | `/api/comments/:id/status` | resolve / confirm / reopen / close |
+| `DELETE` | `/api/comments/:id` | delete (team key, or the author on their own). Also deletes its attachments from R2 |
+| `GET` | `/attachments/<key>` | one stored attachment |
+| `GET` | `/health` | is it up, and is batching really working |
+
+Each comment comes back with its fields in English (`message`, `targets`, `author`,
+`authorId`, `status`, `path`, `created`, `updated`, `title`, `replies`, `attachments`).
+
+> The Spanish names this project was born with (`/api/comentarios`, `/salud`, `/adjuntos/`,
+> and the fields `mensaje`, `senalados`, `autor`, `estado`, `ruta`, `creado`…) **still
+> work**, and every response carries both sets of field names. They are kept for installs
+> that already exist, and they will go away in a later version. Build new things on the
+> English ones. The `status` values themselves (`abierto`, `resuelto`, `confirmado`,
+> `reabierto`) are **not** translated: they are data, and they are what is written in every
+> existing database.
+
+</details>
 
 If you get anything else, the usual suspects are a `database_id` that was not pasted in, the
 R2 bucket not created, or the schema not run against `--remote`.
@@ -311,8 +345,17 @@ One table in your D1 database, `comentarios`: the text, the pointed elements (se
 position), the page, the anonymous author id and name, the state, a history of state changes
 and previous texts, and the browser context. See [`worker/esquema.sql`](worker/esquema.sql).
 
-**Attachments are emailed, not stored.** The panel shows the count, not the files. Storing
-them would mean adding R2.
+**Attachments go to your R2 bucket.** Each file is written to
+`<site>/<comment id>/<32 random hex>/<filename>` and is readable at
+`GET /attachments/<key>`, an unguessable but otherwise **public** URL: no CORS check, no
+team key. The notification email
+carries the files inline while they fit in 15 MB and links the rest. The panel shows the
+count, not the files.
+
+Deleting a comment now deletes its attachments too, replies included. Two caveats: it only
+reaches files uploaded from 20 September 2026 on (older keys carry a date instead of the
+comment id and cannot be traced back), and **nothing expires on its own**. If that matters
+to you, add an R2 lifecycle rule to the bucket. See [SECURITY.md](SECURITY.md).
 
 ## Honest limitations
 
@@ -336,11 +379,16 @@ demo/            a fake client site to try it on
 qa/              browser-driven tests (Playwright)
 ```
 
-Running the checks, and what we ask of a pull request, is in [CONTRIBUTING.md](CONTRIBUTING.md).
-Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+Running the checks, and what we ask of a pull request, is in [CONTRIBUTING.md](CONTRIBUTING.md),
+along with the [code of conduct](CODE_OF_CONDUCT.md). Changes are listed in
+[CHANGELOG.md](CHANGELOG.md). Every push and pull request runs
+[CI](.github/workflows/ci.yml): the code parses, the plugin's production lock still holds,
+and the three copies of the widget still match.
 
-The code and its comments are in Spanish. That's where it was written and I'm not going to
-pretend otherwise. The interface is bilingual.
+The comments are in English. Some names are not: the API routes, the JSON fields, the config
+variables and the SQL columns were written in Spanish and renaming them would break every
+install that already exists, so they stay until there is a version that can afford it. The
+interface is bilingual, and so is the notification email (`EMAIL_LANG`).
 
 ## Licence
 
