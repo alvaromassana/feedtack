@@ -311,8 +311,16 @@ One table in your D1 database, `comentarios`: the text, the pointed elements (se
 position), the page, the anonymous author id and name, the state, a history of state changes
 and previous texts, and the browser context. See [`worker/esquema.sql`](worker/esquema.sql).
 
-**Attachments are emailed, not stored.** The panel shows the count, not the files. Storing
-them would mean adding R2.
+**Attachments go to your R2 bucket.** Each file is written to
+`<site>/<YYYYMMDD>/<32 random hex>/<filename>` and is readable at `GET /adjuntos/<key>`, an
+unguessable but otherwise **public** URL: no CORS check, no team key. The notification email
+carries the files inline while they fit in 15 MB and links the rest. The panel shows the
+count, not the files.
+
+Two things to know before you point this at a client's material: deleting a comment removes
+the database row but **leaves its attachments in R2**, and nothing expires on its own. If
+that matters to you, add an R2 lifecycle rule to the bucket. See
+[SECURITY.md](SECURITY.md).
 
 ## Honest limitations
 
