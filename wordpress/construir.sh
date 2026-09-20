@@ -12,6 +12,7 @@ cp ../widget/feedtack.js feedtack/feedtack.js
 php -l feedtack/feedtack.php >/dev/null
 node --check feedtack/feedtack.js
 php prueba-guardarrail.php >/dev/null || { echo "FAILED: the plugin test bank does not pass"; exit 1; }
+php prueba-traduccion.php >/dev/null || { echo "FAILED: some string has no Spanish translation, or the .mo is stale"; exit 1; }
 
 rm -f feedtack.zip
 zip -rq feedtack.zip feedtack -x '*.DS_Store'

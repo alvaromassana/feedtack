@@ -73,6 +73,11 @@ jobs:
       - name: The plugin refuses to load in production
         run: php wordpress/prueba-guardarrail.php
 
+      # The plugin's strings are English and Spanish ships as a catalogue. Forgetting to
+      # regenerate it leaves the settings page half translated, with nothing erroring.
+      - name: Every string has its Spanish translation
+        run: php wordpress/prueba-traduccion.php
+
   copies:
     name: The three copies of the widget match
     runs-on: ubuntu-latest

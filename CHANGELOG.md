@@ -7,6 +7,14 @@ All notable changes to Feedtack are listed here. The format follows
 ## [Unreleased]
 
 ### Added
+- **The WordPress plugin is translatable.** Its strings were hardcoded Spanish while it
+  declared `Text Domain: feedtack` and had no `__()` anywhere, so anyone installing it
+  outside Spain got a settings screen they could not read. The source strings are English
+  now and Spanish ships in `languages/` (`.po`, `.mo` and `.l10n.php`), so nothing changes
+  for a site running in Spanish. New test `wordpress/prueba-traduccion.php`, in CI.
+- **The floating button's label follows the panel's language.** With no `data-label` the
+  widget used to fall back to the Spanish word regardless of the page, which is not what the
+  README promised.
 - **The HTTP API answers in English**: `/api/comments`, `/api/comments/:id/replies`,
   `/api/comments/:id/status`, `/health`, `/attachments/<key>`, and every comment comes back
   with `message`, `targets`, `author`, `authorId`, `status`, `path`, `created`, `updated`,

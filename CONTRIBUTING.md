@@ -17,7 +17,18 @@ one WordPress plugin. Contributions that keep it that way are the easiest to mer
   variables (`DESTINO`, `REMITENTE`, `ORIGENES_PERMITIDOS`...) and the SQL columns. Match
   what is around you rather than renaming as you go.
 - **The user interface is bilingual** (`es` / `en`), and any new string has to be added to
-  both languages: in the `TEXTOS` table for the widget, in `IDIOMAS` for the email.
+  both languages: in the `TEXTOS` table for the widget, in `IDIOMAS` for the email, and in
+  the gettext catalogue for the WordPress plugin. For the plugin that means wrapping it in
+  `esc_html__( '...', 'feedtack' )` and then:
+
+  ```bash
+  wp i18n make-pot wordpress/feedtack wordpress/feedtack/languages/feedtack.pot --domain=feedtack --slug=feedtack --skip-js
+  wp i18n update-po wordpress/feedtack/languages/feedtack.pot wordpress/feedtack/languages/feedtack-es_ES.po
+  # translate the new msgstr, then
+  wp i18n make-mo wordpress/feedtack/languages && wp i18n make-php wordpress/feedtack/languages
+  ```
+
+  `php wordpress/prueba-traduccion.php` fails if you skip any of that, and so does CI.
 - **Keep the production lock.** Anything that makes it easier to run this on a live site
   is a no.
 
@@ -36,6 +47,7 @@ node qa/qa-ciclo.mjs KEY      # full lifecycle (writes to a real backend)
 
 # these four need nothing but node and php, and CI runs them on every pull request
 php wordpress/prueba-guardarrail.php   # the production lock, 20 cases, no WordPress needed
+php wordpress/prueba-traduccion.php    # every plugin string has its Spanish translation
 (cd worker && node qa/qa-idiomas.mjs)  # both email languages are in step
 (cd worker && node qa/qa-tandas.mjs)   # email batching, with the Worker booted locally
 (cd worker && npx wrangler deploy --dry-run --outdir /tmp/build)   # the Worker builds

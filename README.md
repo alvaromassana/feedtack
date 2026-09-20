@@ -283,7 +283,7 @@ If you would rather not host it, jsDelivr serves it straight from this repositor
 | `data-site` | Identifies the client, shows up in the email subject | `sin-identificar` |
 | `data-endpoint` | Your Worker's base URL | none (required) |
 | `data-color` | Accent colour, usually the client's brand | `#4f46e5` |
-| `data-label` | Button text | `Comentar` / `Comment` |
+| `data-label` | Button text. Left out, it follows the panel's language | `Comentar` / `Comment` |
 | `data-position` | `right-edge` (a tab on the right edge), `bottom-right`, `bottom-left`, `top-right`. `borde-derecho` is the old name for `right-edge` and still works | `right-edge` |
 | `data-lang` | `es` or `en`, overrides the page's `lang` | auto |
 

@@ -27,7 +27,11 @@
     site: script.getAttribute('data-site') || 'sin-identificar',
     api: base || '',
     color: script.getAttribute('data-color') || '#4f46e5',
-    label: script.getAttribute('data-label') || 'Comentar',
+    /* 🔴 Vacío a propósito si no viene: el texto del botón lo pone `txt('boton')` cuando
+       ya se sabe el idioma. Aquí el idioma todavía no está resuelto (se decide más abajo),
+       así que poner 'Comentar' de reserva era cablear español en una web inglesa, justo lo
+       contrario de lo que el README promete de este atributo. */
+    label: script.getAttribute('data-label') || '',
     /* `right-edge` es el nombre bueno; `borde-derecho` es el de siempre y sigue valiendo,
        porque está escrito en la etiqueta <script> de webs ya instaladas y en los ajustes
        guardados del plugin. Se normaliza aquí, en un sitio, y el resto del fichero (y la
@@ -106,6 +110,7 @@
 
   var TEXTOS = {
     es: {
+      boton: 'Comentar',
       titulo: 'Comentarios', pestNuevo: 'Añadir feedback', pestLista: 'Historial',
       cerrar: 'Cerrar', volver: 'Volver a la lista',
       placeholder: 'Cuéntanos qué cambiarías. Puedes señalar uno o varios elementos y adjuntar una captura, todo en el mismo comentario.',
@@ -170,6 +175,7 @@
       errTotal: 'Entre todos los adjuntos superas %s. Quita alguno.'
     },
     en: {
+      boton: 'Comment',
       titulo: 'Comments', pestNuevo: 'Add feedback', pestLista: 'History',
       cerrar: 'Close', volver: 'Back to list',
       placeholder: 'Tell us what you would change. You can point at one or more elements and attach a screenshot, all in the same comment.',
@@ -1040,14 +1046,14 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
          una pastilla grande compitiendo con los botones flotantes de la web (WhatsApp,
          chat, cookies), que viven justo en esa esquina. La etiqueta se despliega al
          acercar el raton, asi que sigue siendo evidente para que sirve. */
-      b = el('button', { class: 'pestana', type: 'button', 'aria-label': CFG.label });
+      b = el('button', { class: 'pestana', type: 'button', 'aria-label': CFG.label || txt('boton') });
       b.innerHTML = ICONOS.flecha;
-      b.appendChild(el('span', { class: 'etiq', text: CFG.label }));
+      b.appendChild(el('span', { class: 'etiq', text: CFG.label || txt('boton') }));
       if (n) b.appendChild(el('span', { class: 'cuenta', text: String(n) }));
     } else {
       b = el('button', { class: 'burbuja', type: 'button', 'aria-label': txt('titulo') }, [
         el('span', { class: 'punto' }),
-        el('span', { text: CFG.label })
+        el('span', { text: CFG.label || txt('boton') })
       ]);
       if (n) b.appendChild(el('span', { class: 'cuenta', text: String(n) }));
     }
