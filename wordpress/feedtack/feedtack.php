@@ -184,7 +184,9 @@ function feedtack_sanear( $entrada ) {
 		$salida['label'] = $d['label'];
 	}
 
-	$posiciones = array( 'borde-derecho', 'bottom-right', 'bottom-left', 'top-right' );
+	// `right-edge` is the documented name; `borde-derecho` is the one this was born with
+	// and is what sits in the saved settings of every site that already has the plugin.
+	$posiciones = array( 'borde-derecho', 'right-edge', 'bottom-right', 'bottom-left', 'top-right' );
 	$salida['posicion'] = ( isset( $entrada['posicion'] ) && in_array( $entrada['posicion'], $posiciones, true ) )
 		? $entrada['posicion']
 		: $d['posicion'];

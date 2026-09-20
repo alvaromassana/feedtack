@@ -28,7 +28,12 @@
     api: base || '',
     color: script.getAttribute('data-color') || '#4f46e5',
     label: script.getAttribute('data-label') || 'Comentar',
-    position: script.getAttribute('data-position') || 'borde-derecho'
+    /* `right-edge` es el nombre bueno; `borde-derecho` es el de siempre y sigue valiendo,
+       porque está escrito en la etiqueta <script> de webs ya instaladas y en los ajustes
+       guardados del plugin. Se normaliza aquí, en un sitio, y el resto del fichero (y la
+       hoja de estilos) solo conoce el nombre interno. */
+    position: (script.getAttribute('data-position') || 'borde-derecho')
+      .replace(/^right-edge$/, 'borde-derecho')
   };
 
   var MAX_FILE_BYTES = 8 * 1024 * 1024;

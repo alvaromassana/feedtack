@@ -17,9 +17,9 @@ jobs:
     name: Syntax
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -51,8 +51,8 @@ jobs:
     name: Both email languages say the same things
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: '20'
 
@@ -66,7 +66,7 @@ jobs:
     name: WordPress production lock
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The bank simulates the WordPress functions the plugin uses, so it needs no
       # WordPress and no database. It exits 1 when a case fails.
@@ -77,7 +77,7 @@ jobs:
     name: The three copies of the widget match
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       # The plugin ships its own copy of the widget, and the zip ships a third one. They
       # drift in silence: editing widget/feedtack.js and forgetting wordpress/construir.sh

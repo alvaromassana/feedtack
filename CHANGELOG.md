@@ -11,6 +11,8 @@ All notable changes to Feedtack are listed here. The format follows
   `/api/comments/:id/status`, `/health`, `/attachments/<key>`, and every comment comes back
   with `message`, `targets`, `author`, `authorId`, `status`, `path`, `created`, `updated`,
   `title`, `replies` and `attachments`. Documented in the README.
+  `data-position` takes `right-edge` (the old `borde-derecho` still works), which was the
+  last Spanish word anyone integrating this had to type.
   **Nothing breaks**: the Spanish routes still answer and every response carries both sets
   of field names, because an installed widget that lost its routes would show an empty list
   with no error at all. The aliases go away once no review started before this is still
