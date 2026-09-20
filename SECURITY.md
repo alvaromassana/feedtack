@@ -15,8 +15,8 @@ built for that, and only for that:
   `ORIGENES_PERMITIDOS`. Everything else is rejected by CORS.
 - **Attachments are stored in your R2 bucket, and served from an unguessable public URL.**
   Every file a reviewer attaches is written to R2 under
-  `<site>/<YYYYMMDD>/<32 random hex>/<filename>` and can be fetched at
-  `GET /adjuntos/<that key>`. That URL is **not** behind CORS, the team key or any other
+  `<site>/<comment id>/<32 random hex>/<filename>` and can be fetched at
+  `GET /attachments/<that key>` (`/adjuntos/` still answers). That URL is **not** behind CORS, the team key or any other
   check: whoever holds the link can read the file. The key is the only secret, and it
   travels in the notification email. The Worker does force `X-Content-Type-Options: nosniff`,
   a `sandbox` CSP, `X-Robots-Tag: noindex`, and serves everything but real images
