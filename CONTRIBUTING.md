@@ -44,3 +44,8 @@ where yours lives.
 ## Reporting a security issue
 
 Please don't open a public issue. See [SECURITY.md](SECURITY.md).
+
+## Code of conduct
+
+Be decent, and assume the other person is too. The long version, and where to report
+something that needs it, is in [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

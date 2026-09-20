@@ -344,8 +344,11 @@ demo/            a fake client site to try it on
 qa/              browser-driven tests (Playwright)
 ```
 
-Running the checks, and what we ask of a pull request, is in [CONTRIBUTING.md](CONTRIBUTING.md).
-Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+Running the checks, and what we ask of a pull request, is in [CONTRIBUTING.md](CONTRIBUTING.md),
+along with the [code of conduct](CODE_OF_CONDUCT.md). Changes are listed in
+[CHANGELOG.md](CHANGELOG.md). Every push and pull request runs
+[CI](.github/workflows/ci.yml): the code parses, the plugin's production lock still holds,
+and the three copies of the widget still match.
 
 The code and its comments are in Spanish. That's where it was written and I'm not going to
 pretend otherwise. The interface is bilingual.
