@@ -173,8 +173,35 @@ once more.
 #### Check it is up
 
 ```bash
-curl https://your-worker.workers.dev/salud      # {"ok":true}
+curl https://your-worker.workers.dev/health     # {"ok":true}
 ```
+
+<details>
+<summary>The HTTP API, if you want to build something else on it</summary>
+
+| Method | Route | What |
+|---|---|---|
+| `POST` | `/api/feedback` | create a comment (multipart: `site`, `mensaje`, `autor`, `autor_id`, `contexto`, `senalados`, `adjunto1..N`) |
+| `GET` | `/api/comments?site=X` | list a site's comments, with their replies |
+| `PATCH` | `/api/comments/:id` | edit the text (author only) |
+| `POST` | `/api/comments/:id/replies` | reply inside a comment |
+| `POST` | `/api/comments/:id/status` | resolve / confirm / reopen / close |
+| `DELETE` | `/api/comments/:id` | delete (team key, or the author on their own). Also deletes its attachments from R2 |
+| `GET` | `/attachments/<key>` | one stored attachment |
+| `GET` | `/health` | is it up, and is batching really working |
+
+Each comment comes back with its fields in English (`message`, `targets`, `author`,
+`authorId`, `status`, `path`, `created`, `updated`, `title`, `replies`, `attachments`).
+
+> The Spanish names this project was born with (`/api/comentarios`, `/salud`, `/adjuntos/`,
+> and the fields `mensaje`, `senalados`, `autor`, `estado`, `ruta`, `creado`…) **still
+> work**, and every response carries both sets of field names. They are kept for installs
+> that already exist, and they will go away in a later version. Build new things on the
+> English ones. The `status` values themselves (`abierto`, `resuelto`, `confirmado`,
+> `reabierto`) are **not** translated: they are data, and they are what is written in every
+> existing database.
+
+</details>
 
 If you get anything else, the usual suspects are a `database_id` that was not pasted in, the
 R2 bucket not created, or the schema not run against `--remote`.

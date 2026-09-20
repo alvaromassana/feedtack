@@ -276,6 +276,50 @@ async function caso4() {
     /ELIMINADO/.test(correos[0].subject) && correos[0].subject !== '💬 Feedtack · prueba', correos[0].subject);
     comprobar('lleva el texto de lo borrado', correos[0].html.includes('esto lo voy a borrar'));
   }
+
+  await parar();
+}
+
+/* 🔒 La superficie en inglés, y que la de siempre SIGUE viva. El corte en seco es lo que
+   no se puede hacer: un widget ya instalado en la web de un cliente llama a las rutas
+   viejas y, si dejaran de existir, `cargar()` se traga el error y pinta la lista VACÍA,
+   sin un solo aviso. Así que aquí se comprueban las dos, no solo la nueva. */
+async function casoIngles() {
+  console.log('\n4bis) la API responde en inglés Y sigue respondiendo a los nombres de siempre');
+  await arrancar({ VENTANA_MINUTOS: '30', CORTE_COMENTARIOS: '10' });
+  const base = `http://127.0.0.1:${PUERTO_WORKER}`;
+  const id = await comentar('un comentario para mirar la API');
+
+  const salud = await fetch(`${base}/health`);
+  comprobar('/health responde', salud.status === 200, `HTTP ${salud.status}`);
+  const saludVieja = await fetch(`${base}/salud`);
+  comprobar('y /salud sigue respondiendo', saludVieja.status === 200, `HTTP ${saludVieja.status}`);
+
+  const en = await fetch(`${base}/api/comments?site=prueba`, { headers: { Origin: ORIGEN } });
+  const je = await en.json();
+  comprobar('/api/comments devuelve la lista', en.status === 200 && Array.isArray(je.comments),
+    `HTTP ${en.status}, comments=${typeof je.comments}`);
+  const c = (je.comments || [])[0] || {};
+  comprobar('y cada comentario trae los campos en inglés',
+    c.message === 'un comentario para mirar la API' && 'status' in c && 'created' in c && 'targets' in c,
+    `message=${c.message}, status=${c.status}`);
+  comprobar('sin haber perdido los de siempre',
+    c.mensaje === c.message && c.estado === c.status && c.creado === c.created);
+
+  const es = await fetch(`${base}/api/comentarios?site=prueba`, { headers: { Origin: ORIGEN } });
+  const js = await es.json();
+  comprobar('/api/comentarios sigue devolviendo la lista',
+    es.status === 200 && Array.isArray(js.comentarios), `HTTP ${es.status}`);
+
+  // CONTROL NEGATIVO: una ruta que no existe en ninguno de los dos idiomas da 404.
+  const no = await fetch(`${base}/api/kommentare?site=prueba`, { headers: { Origin: ORIGEN } });
+  comprobar('una ruta inventada sigue dando 404', no.status === 404, `HTTP ${no.status}`);
+
+  const borrado = await fetch(`${base}/api/comments/${id}`, {
+    method: 'DELETE', headers: { Origin: ORIGEN, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ clave: 'clave-de-prueba' })
+  });
+  comprobar('y se puede borrar por la ruta inglesa', (await borrado.json()).ok === true);
   await parar();
 }
 
@@ -316,6 +360,29 @@ async function caso6() {
   // Una clave a medias no puede servir nada.
   const r404 = await fetch(`http://127.0.0.1:${PUERTO_WORKER}/adjuntos/prueba/`);
   comprobar('una clave incompleta da 404', r404.status === 404, `HTTP ${r404.status}`);
+
+  /* 🔒 Y al borrar el comentario, su fichero se va con él. Hasta el 20-sep-2026 el adjunto
+     se quedaba en R2 para siempre y su URL seguía sirviéndolo: "he borrado mi comentario"
+     no borraba la foto. El 200 de arriba es el control positivo de este 404: sin él, un
+     404 aquí no probaría nada (podría ser que el enlace nunca hubiera servido). */
+  console.log('   y al borrar el comentario, su fichero deja de estar en R2');
+  correos.length = 0;
+  const idFoto = await comentar('esta lleva foto y la voy a borrar',
+    { adjunto: { nombre: 'borrable.png', datos: Buffer.alloc(1024, 9) } });
+  await esperar(4000);
+  const enlaceBorrable = (correos[0]?.html || '').match(/href="(http[^"]*\/adjuntos\/[^"]*)"/)?.[1];
+  if (!enlaceBorrable) {
+    comprobar('el adjunto se sirve antes de borrar', false, 'no había enlace que probar');
+  } else {
+    const antes = await fetch(enlaceBorrable);
+    comprobar('el adjunto se sirve ANTES de borrar', antes.status === 200, `HTTP ${antes.status}`);
+    const rb = await eliminar(idFoto);
+    await esperar(800);
+    comprobar('el borrado dice cuántos ficheros se llevó', rb.ficherosBorrados === 1,
+      `ficherosBorrados=${rb.ficherosBorrados}`);
+    const despues = await fetch(enlaceBorrable);
+    comprobar('y DESPUÉS ya no se sirve', despues.status === 404, `HTTP ${despues.status}`);
+  }
 
   console.log('   y ahora una por encima del presupuesto (16 MB con presupuesto de 15)');
   correos.length = 0;
@@ -453,7 +520,8 @@ async function main() {
     await caso1y3();
     await caso2();
     await caso4();
-    await caso5();
+    await casoIngles();
+  await caso5();
     await caso6();
     await caso7();
     await caso8();

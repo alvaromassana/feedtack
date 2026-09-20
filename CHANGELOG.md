@@ -6,7 +6,22 @@ All notable changes to Feedtack are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **The HTTP API answers in English**: `/api/comments`, `/api/comments/:id/replies`,
+  `/api/comments/:id/status`, `/health`, `/attachments/<key>`, and every comment comes back
+  with `message`, `targets`, `author`, `authorId`, `status`, `path`, `created`, `updated`,
+  `title`, `replies` and `attachments`. Documented in the README.
+  **Nothing breaks**: the Spanish routes still answer and every response carries both sets
+  of field names, because an installed widget that lost its routes would show an empty list
+  with no error at all. The aliases go away once no review started before this is still
+  open, which is the same condition the project already wrote for `tack_*`. The `status`
+  values (`abierto`, `resuelto`…) are data and are not translated.
+
 ### Fixed
+- **Deleting a comment now deletes its attachments.** `DELETE` removed the row and left the
+  files in R2 with their URLs working forever. Attachment keys now carry the comment id, so
+  they can be found and deleted, replies included. Older files cannot be linked back to
+  their comment; an R2 lifecycle rule is the way to clear those.
 - **The README and SECURITY.md were wrong about where attachments go.** Both said they are
   emailed and never stored; they have been written to R2 since 8 September 2026 and are
   served from `GET /adjuntos/<key>`, an unguessable but public URL that does not go through

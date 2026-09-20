@@ -47,13 +47,13 @@ export default {
     const cors = cabecerasCors(origen, env);
 
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (url.pathname === '/salud') return await salud(env, cors);
+    if (url.pathname === '/health' || url.pathname === '/salud') return await salud(env, cors);
 
     /* Attachments are opened from the email, that is, from a mail client that sends no
        Origin: this route goes BEFORE the CORS filter on purpose, like /salud. What
        protects it is that the key carries 32 random characters and there is no way to
        list the bucket; it is not authentication, and SECURITY.md says so. */
-    const adj = url.pathname.match(/^\/adjuntos\/(.+)$/);
+    const adj = url.pathname.match(/^\/(?:attachments|adjuntos)\/(.+)$/);
     if (adj && (request.method === 'GET' || request.method === 'HEAD')) {
       let clave;
       // A half-written %AA makes decodeURIComponent throw, and this route does not go
@@ -67,18 +67,30 @@ export default {
       return json({ error: 'origen no permitido' }, 403, {});
     }
 
+    /* 🔒 Cada ruta tiene su nombre en inglés y el de siempre, y los dos llevan al mismo
+       sitio. El inglés es el nombre bueno y el que está documentado; el español se queda
+       porque hay revisiones abiertas cuyo widget, ya instalado en la web de un cliente,
+       llama a las rutas viejas, y un corte en seco las dejaría con la lista VACÍA y sin
+       error (`cargar()` traga el fallo a propósito). Los alias se retiran cuando no quede
+       ninguna revisión viva de antes del cambio, que es la misma condición que se escribió
+       para el renombrado de tack_* a feedtack_* y la misma que sigue vigente. */
+    const ruta = url.pathname
+      .replace(/^\/api\/comments\b/, '/api/comentarios')
+      .replace(/\/replies$/, '/respuestas')
+      .replace(/\/status$/, '/estado');
+
     try {
-      if (url.pathname === '/api/feedback' && request.method === 'POST') {
+      if (ruta === '/api/feedback' && request.method === 'POST') {
         return await crear(request, env, cors);
       }
-      if (url.pathname === '/api/comentarios' && request.method === 'GET') {
+      if (ruta === '/api/comentarios' && request.method === 'GET') {
         return await listar(url, env, cors);
       }
-      const r = url.pathname.match(/^\/api\/comentarios\/([\w-]+)\/respuestas$/);
+      const r = ruta.match(/^\/api\/comentarios\/([\w-]+)\/respuestas$/);
       if (r && request.method === 'POST') {
         return await responder(r[1], request, env, cors);
       }
-      const m = url.pathname.match(/^\/api\/comentarios\/([\w-]+)(\/estado)?$/);
+      const m = ruta.match(/^\/api\/comentarios\/([\w-]+)(\/estado)?$/);
       if (m && m[2] && request.method === 'POST') {
         return await cambiarEstado(m[1], request, env, cors);
       }
@@ -236,9 +248,9 @@ async function listar(url, env, cors) {
     });
   });
 
-  const comentarios = (results || []).map(c => ({
+  const comentarios = (results || []).map(c => enIngles({
     id: c.id,
-    respuestas: porComentario[c.id] || [],
+    respuestas: (porComentario[c.id] || []).map(enIngles),
     url: c.url,
     ruta: c.ruta,
     titulo: c.titulo,
@@ -253,7 +265,35 @@ async function listar(url, env, cors) {
     editado: JSON.parse(c.historial || '[]').some(h => h.texto_anterior != null)
   }));
 
-  return json({ ok: true, comentarios }, 200, cors);
+  return json({ ok: true, comments: comentarios, comentarios }, 200, cors);
+}
+
+/* 🔒 Cada comentario sale con sus campos en inglés Y con los de siempre. El inglés es el
+   nombre bueno; el español se queda mientras haya widgets instalados que lo lean, y esos
+   no fallarían con ruido: `cargar()` traga el error y pinta la lista vacía, así que el
+   cliente vería sus comentarios desaparecer sin un solo aviso.
+   Los estados NO se traducen: son valores, y además son los que hay escritos en la
+   columna `estado` de la base de cada instalación. Renombrarlos es migrar datos. */
+const CAMPOS_EN = {
+  mensaje: 'message', senalados: 'targets', autor: 'author', autorId: 'authorId',
+  estado: 'status', ruta: 'path', creado: 'created', actualizado: 'updated',
+  titulo: 'title', respuestas: 'replies', nAdjuntos: 'attachments', editado: 'edited',
+  contexto: 'context'
+};
+function enIngles(o) {
+  const salida = { ...o };
+  for (const [es, en] of Object.entries(CAMPOS_EN)) {
+    if (es in o) salida[en] = o[es];
+  }
+  return salida;
+}
+
+/* Y al revés: lo que entra se lee por el nombre inglés primero y por el de siempre
+   después, para que un widget viejo y uno nuevo hablen los dos con este worker. */
+function campo(fuente, en, es) {
+  const v = typeof fuente.get === 'function' ? (fuente.get(en) ?? fuente.get(es))
+                                             : (fuente[en] ?? fuente[es]);
+  return v;
 }
 
 // ───────────────────────────────────────────────────────────────── editar
@@ -392,6 +432,25 @@ async function eliminar(id, request, env, cors) {
 
   await env.DB.prepare('DELETE FROM comentarios WHERE id = ?').bind(id).run();
 
+  /* 🔒 Y sus ficheros. "He borrado mi comentario" tiene que significar que la foto ya no
+     está, no solo que no se vea en la lista: su URL de /adjuntos/ seguía funcionando para
+     siempre. Va DESPUÉS del borrado de la fila y no puede tumbar la petición: si R2 falla,
+     el comentario ya está borrado, que es lo que pidió quien pulsó el botón.
+     🔴 Solo alcanza a los subidos con la clave nueva (la que lleva el id). Los de antes
+     del 20-sep-2026 no son localizables desde aquí y los limpia la regla de ciclo de vida
+     del bucket. */
+  let ficherosBorrados = 0;
+  await seguro(async () => {
+    if (!env.ADJUNTOS) return;
+    const prefijo = `${fila.site}/${id}/`;
+    let cursor;
+    do {
+      const lote = await env.ADJUNTOS.list({ prefix: prefijo, cursor });
+      for (const obj of lote.objects) { await env.ADJUNTOS.delete(obj.key); ficherosBorrados++; }
+      cursor = lote.truncated ? lote.cursor : undefined;
+    } while (cursor);
+  }, 'borrado de adjuntos en R2');
+
   /* El aviso va DESPUES de borrar, asi que si falla el borrado ya esta hecho: devolver
      error haria que el usuario reintentase algo que ya ocurrio, y encima viendo un fallo.
      Se avisa de que la copia no salio, que es lo unico que se pierde. */
@@ -412,7 +471,7 @@ async function eliminar(id, request, env, cors) {
     console.error('feedtack: borrado OK pero la copia por correo fallo', id, e && e.message);
   }
 
-  return json({ ok: true, eliminado: id, copiaEnviada }, 200, cors);
+  return json({ ok: true, eliminado: id, copiaEnviada, ficherosBorrados }, 200, cors);
 }
 
 // ──────────────────────────────────────────────────── adjuntos y cola de tandas
@@ -462,7 +521,14 @@ async function encolar(env, datos) {
   try {
     const guardados = [];
     for (const a of datos.adjuntos || []) {
-      const clave = `${datos.site}/${new Date().toISOString().slice(0, 10).replace(/-/g, '')}/${claveAleatoria()}/${a.filename}`;
+      /* 🔒 El id del comentario va DENTRO de la clave, y no es cosmético: es lo único
+         que permite borrar los ficheros de un comentario cuando se borra el comentario.
+         Antes aquí iba la fecha, y como la fila de la cola (la única que guardaba las
+         claves) se borra al enviarse el correo, después de eso no había forma de saber
+         qué objetos de R2 eran de quién: se quedaban para siempre.
+         En una respuesta, `datos.id` es el id del comentario PADRE (lo pone responder()),
+         así que borrar el comentario se lleva también los adjuntos de sus respuestas. */
+      const clave = `${datos.site}/${datos.id}/${claveAleatoria()}/${a.filename}`;
       await env.ADJUNTOS.put(clave, a.datos, { httpMetadata: { contentType: a.contentType } });
       guardados.push({ clave, nombre: a.filename, tipo: a.contentType, bytes: a.datos.byteLength });
     }
@@ -529,7 +595,10 @@ async function servirAdjunto(clave, env, metodo) {
   /* The full shape of the key is required (site / date / 32 random / name). Without it a
      half key would be an invitation to try prefixes, and although R2 does not serve
      prefixes, whoever reads the logs could not tell probing from a normal download. */
-  if (!env.ADJUNTOS || !/^[\w.-]+\/\d{8}\/[0-9a-f]{32}\/.+$/.test(clave)) {
+  /* Two shapes are accepted: the old one with a date (`site/YYYYMMDD/...`) and the one
+     with the comment id (`site/<uuid>/...`). The old one has to keep working or every
+     attachment link in an email already sent would start answering 404. */
+  if (!env.ADJUNTOS || !/^[\w.-]+\/[\w-]{8,40}\/[0-9a-f]{32}\/.+$/.test(clave)) {
     return new Response('no encontrado', { status: 404 });
   }
   const obj = await env.ADJUNTOS.get(clave);

@@ -809,9 +809,17 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   function cargar() {
     if (!CFG.api) return Promise.resolve();
     cargando = true;
-    return api('/api/comentarios?site=' + encodeURIComponent(CFG.site))
+    return api('/api/comments?site=' + encodeURIComponent(CFG.site))
       .then(function (d) {
-        comentarios = d.comentarios || [];
+        /* El worker devuelve la lista con las dos llaves, `comments` (la buena) y
+           `comentarios` (la de siempre), mientras queden widgets instalados leyendo la
+           vieja. Aquí se lee la buena con la otra de respaldo, porque este mismo fichero
+           puede acabar apuntando a un worker que todavía no se ha actualizado.
+           🔴 Los nombres de campo DENTRO de cada comentario (`mensaje`, `senalados`,
+           `estado`...) siguen en español a propósito: el worker los manda en los dos
+           idiomas, y renombrarlos aquí son 95 sitios que no aportan nada hasta que se
+           retiren los alias. Se hace en ese mismo movimiento, no antes. */
+        comentarios = d.comments || d.comentarios || [];
         cargando = false;
         pintarMarcas();
         if (!abierto) pintarBurbuja();
@@ -1462,7 +1470,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     fd.append('senalados', JSON.stringify(respBorrador.senalados));
     respBorrador.adjuntos.forEach(function (a, i) { fd.append('adjunto' + i, a.blob, a.nombre); });
 
-    api('/api/comentarios/' + c.id + '/respuestas', { method: 'POST', body: fd })
+    api('/api/comments/' + c.id + '/replies', { method: 'POST', body: fd })
       .then(function () { return cargar(); })
       .then(function () {
         respondiendoA = null;
@@ -1692,7 +1700,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   function eliminarComentario(c, boton) {
     boton.disabled = true;
     boton.textContent = txt('eliminando');
-    api('/api/comentarios/' + c.id, {
+    api('/api/comments/' + c.id, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clave: CLAVE_ADMIN, autor_id: AUTOR_ID })
@@ -1713,7 +1721,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     var nuevo = (refs.editar.value || '').trim();
     if (!nuevo && !(c.senalados || []).length) return mostrarError(txt('errNoVacio'));
     boton.disabled = true; boton.textContent = txt('guardando');
-    api('/api/comentarios/' + c.id, {
+    api('/api/comments/' + c.id, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ autor_id: AUTOR_ID, mensaje: nuevo, senalados: c.senalados })
@@ -1730,7 +1738,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   function cambiar(c, estado, boton) {
     var antes = boton.textContent;
     boton.disabled = true; boton.textContent = txt('unMomento');
-    api('/api/comentarios/' + c.id + '/estado', {
+    api('/api/comments/' + c.id + '/status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ estado: estado, clave: CLAVE_ADMIN, autor_id: AUTOR_ID })

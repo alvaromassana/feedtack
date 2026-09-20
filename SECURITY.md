@@ -22,9 +22,13 @@ built for that, and only for that:
   a `sandbox` CSP, `X-Robots-Tag: noindex`, and serves everything but real images
   (`png`, `jpeg`, `gif`, `webp`) as a download, so an uploaded SVG or HTML cannot run script
   on your Worker's domain.
-- **Deleting a comment does not delete its attachments.** `DELETE /api/comentarios/:id`
-  removes the database row; the files stay in R2 and their URLs keep working. If you need
-  them gone, empty the bucket yourself. Set an R2 lifecycle rule if you want them to expire.
+- **Deleting a comment deletes its attachments too**, since 20 September 2026:
+  `DELETE /api/comments/:id` removes the database row and then deletes every R2 object
+  under that comment's prefix, replies included. The response says how many
+  (`ficherosBorrados`). 🔴 It only reaches files uploaded from that date on: older keys
+  carry a date instead of the comment id and cannot be linked back to it, so nothing here
+  can find them. Set an R2 lifecycle rule on the bucket if you want those to expire.
+- **Nothing expires on its own.** There is no retention policy unless you configure one.
 - **There is no rate limiting.** An allowed origin can send as many comments as it likes.
 
 The WordPress plugin refuses to load when `wp_get_environment_type()` returns
