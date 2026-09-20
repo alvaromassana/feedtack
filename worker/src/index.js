@@ -669,6 +669,7 @@ export class Tandas extends DurableObject {
    correo mientras quepan en el presupuesto; los que no caben van enlazados, que es lo
    mismo que hacía falta para los que ya venían de un intento fallido. */
 async function enviarTanda(env, site, pendientes, motivo) {
+  idiomaCorreo(env);
   const base = (env.BASE_PUBLICA || '').replace(/\/$/, '');
   const eventos = [];
   const adjuntosCorreo = [];
@@ -725,17 +726,14 @@ function asuntoTanda(site) {
 function resumenTanda(eventos, motivo) {
   if (eventos.length === 1) {
     const e = eventos[0];
-    return `${MOTE[e.tipo] || ''}${resumir(e.mensaje, e.senalados)}`;
+    return `${T.mote[e.tipo] || ''}${resumir(e.mensaje, e.senalados)}`;
   }
   const cuenta = {};
   eventos.forEach(e => { cuenta[e.tipo] = (cuenta[e.tipo] || 0) + 1; });
-  const partes = [
-    cuenta.nuevo ? `${cuenta.nuevo} comentario${cuenta.nuevo > 1 ? 's' : ''}` : '',
-    cuenta.respuesta ? `${cuenta.respuesta} respuesta${cuenta.respuesta > 1 ? 's' : ''}` : '',
-    cuenta.editado ? `${cuenta.editado} editado${cuenta.editado > 1 ? 's' : ''}` : '',
-    cuenta.reabierto ? `${cuenta.reabierto} reabierto${cuenta.reabierto > 1 ? 's' : ''}` : ''
-  ].filter(Boolean).join(', ');
-  const lleno = motivo === 'corte' ? ' (tanda llena)' : '';
+  const partes = ['nuevo', 'respuesta', 'editado', 'reabierto']
+    .map(k => (cuenta[k] ? T.cuenta[k](cuenta[k]) : ''))
+    .filter(Boolean).join(', ');
+  const lleno = motivo === 'corte' ? ` ${T.tandaLlena}` : '';
   return `${partes}${lleno}: "${resumir(eventos[0].mensaje, eventos[0].senalados)}"`;
 }
 
@@ -744,18 +742,138 @@ function preheader(texto) {
   return `<div style="display:none;font-size:1px;color:#f1f5f9;max-height:0;overflow:hidden">${esc(texto)}</div>`;
 }
 
+/* ─────────────────────────────────────────────── language of the notification email
+   Every word a Feedtack email says is in this table. Spanish is the default because
+   that is what every deployment made before this existed already receives; set
+
+     EMAIL_LANG = "en"
+
+   in wrangler.toml (or as a secret) to get the English one. Nothing else in the
+   project reads it: the widget picks its own language from the page.
+
+   This is the first English-named variable in the Worker on purpose. The rest
+   (DESTINO, REMITENTE, ORIGENES_PERMITIDOS...) are still Spanish, and renaming those
+   breaks existing deployments, so it is a separate decision. */
+const IDIOMAS = {
+  es: {
+    locale: 'es-ES', html: 'es',
+    pagina: 'Página', url: 'URL', enviadoPor: 'Enviado por', pantalla: 'Pantalla',
+    navegador: 'Navegador', momento: 'Momento',
+    ventanaMonitor: (v, p) => `${v} (ventana), ${p} (monitor)`,
+    sinIdentificar: 'sin identificar',
+    portada: 'Portada',
+    antesDecia: 'Antes decía',
+    vacio: '(vacío)',
+    senalados: n => (n > 1 ? `${n} elementos señalados` : 'Elemento señalado'),
+    desdeArriba: (w, h, y) => `${w}×${h} px, a ${y} px del principio de la página`,
+    sinTexto: 'Sin texto, mira los adjuntos.',
+    sinTextoTanda: 'Sin texto, mira lo señalado y los adjuntos.',
+    adjuntos: n => `${n} adjunto${n > 1 ? 's' : ''}`,
+    adjunto: 'adjunto',
+    noCabia: 'no cabía en el correo, se abre con el enlace',
+    banda: {
+      nuevo: 'Nuevo comentario en', editado: 'Comentario EDITADO en',
+      reabierto: 'Comentario REABIERTO en', eliminado: 'Comentario ELIMINADO en',
+      respuesta: 'Respuesta en un comentario de'
+    },
+    mote: { nuevo: '', editado: '[editado] ', reabierto: '[reabierto] ',
+            eliminado: '[ELIMINADO] ', respuesta: '[respuesta] ' },
+    tarjeta: { nuevo: 'Comentario nuevo', respuesta: 'Respuesta',
+               editado: 'Comentario editado', reabierto: 'Comentario reabierto' },
+    cuenta: {
+      nuevo: n => `${n} comentario${n > 1 ? 's' : ''}`,
+      respuesta: n => `${n} respuesta${n > 1 ? 's' : ''}`,
+      editado: n => `${n} editado${n > 1 ? 's' : ''}`,
+      reabierto: n => `${n} reabierto${n > 1 ? 's' : ''}`
+    },
+    tandaLlena: '(tanda llena)',
+    tandaLlenaCorta: 'tanda llena',
+    franja: (a, b) => `${a} a ${b}`,
+    novedades: (n, site) => `${n} novedades en ${site}`,
+    paginas: n => `${n} páginas`,
+    borrado: porSuAutor => 'Este comentario se ha <b>borrado</b> de la lista' +
+      (porSuAutor ? ', y lo ha borrado <b>quien lo escribió</b>' : ' desde el equipo') +
+      '. Esta copia es el único rastro que queda.<br>',
+    pie: site => `Enviado desde el widget Feedtack, instalado en la web de ${site}. ` +
+      'Responder a este correo NO llega al cliente.',
+    pieTanda: (min, corte, site) => `Una tanda reúne lo que llega en ${min} minutos desde ` +
+      `el primer aviso, o ${corte} avisos, lo que pase antes. Enviado desde el widget ` +
+      `Feedtack instalado en la web de ${site}. Responder a este correo NO llega al cliente.`,
+    desconocido: 'desconocido',
+    en: 'en'
+  },
+  en: {
+    locale: 'en-GB', html: 'en',
+    pagina: 'Page', url: 'URL', enviadoPor: 'Sent by', pantalla: 'Screen',
+    navegador: 'Browser', momento: 'When',
+    ventanaMonitor: (v, p) => `${v} (window), ${p} (monitor)`,
+    sinIdentificar: 'not identified',
+    portada: 'Home',
+    antesDecia: 'It used to say',
+    vacio: '(empty)',
+    senalados: n => (n > 1 ? `${n} elements pointed at` : 'Element pointed at'),
+    desdeArriba: (w, h, y) => `${w}×${h} px, ${y} px from the top of the page`,
+    sinTexto: 'No text, look at the attachments.',
+    sinTextoTanda: 'No text, look at what was pointed at and at the attachments.',
+    adjuntos: n => `${n} attachment${n > 1 ? 's' : ''}`,
+    adjunto: 'attachment',
+    noCabia: 'too big for the email, open it with the link',
+    banda: {
+      nuevo: 'New comment on', editado: 'Comment EDITED on',
+      reabierto: 'Comment REOPENED on', eliminado: 'Comment DELETED on',
+      respuesta: 'Reply to a comment on'
+    },
+    mote: { nuevo: '', editado: '[edited] ', reabierto: '[reopened] ',
+            eliminado: '[DELETED] ', respuesta: '[reply] ' },
+    tarjeta: { nuevo: 'New comment', respuesta: 'Reply',
+               editado: 'Comment edited', reabierto: 'Comment reopened' },
+    cuenta: {
+      nuevo: n => `${n} comment${n > 1 ? 's' : ''}`,
+      respuesta: n => `${n} repl${n > 1 ? 'ies' : 'y'}`,
+      editado: n => `${n} edited`,
+      reabierto: n => `${n} reopened`
+    },
+    tandaLlena: '(batch full)',
+    tandaLlenaCorta: 'batch full',
+    franja: (a, b) => `${a} to ${b}`,
+    novedades: (n, site) => `${n} updates on ${site}`,
+    paginas: n => `${n} pages`,
+    borrado: porSuAutor => 'This comment has been <b>deleted</b> from the list' +
+      (porSuAutor ? ', by <b>whoever wrote it</b>' : ', by the team') +
+      '. This copy is the only trace left.<br>',
+    pie: site => `Sent from the Feedtack widget installed on ${site}. ` +
+      'Replying to this email does NOT reach the client.',
+    pieTanda: (min, corte, site) => `A batch gathers whatever arrives within ${min} minutes ` +
+      `of the first notification, or ${corte} notifications, whichever comes first. Sent from ` +
+      `the Feedtack widget installed on ${site}. Replying to this email does NOT reach the client.`,
+    desconocido: 'unknown',
+    en: 'on'
+  }
+};
+
+/* Resolved once per email, from the two places that build one (avisar and enviarTanda).
+   It is configuration, constant for a deployment, so a module-level value is enough:
+   there is no per-request state here to leak between isolates. */
+let T = IDIOMAS.es;
+let ZONA = 'Europe/Madrid';
+function idiomaCorreo(env) {
+  T = IDIOMAS[String(env.EMAIL_LANG || 'es').toLowerCase().slice(0, 2)] || IDIOMAS.es;
+  ZONA = env.ZONA_HORARIA || 'Europe/Madrid';
+}
+
 // ────────────────────────────────────────────────────────────────── correo
 
 const ICONO = { nuevo: '💬', editado: '✏️', reabierto: '🔁', eliminado: '🗑️', respuesta: '↩️' };
-const MOTE = { nuevo: '', editado: '[editado] ', reabierto: '[reabierto] ', eliminado: '[ELIMINADO] ', respuesta: '[respuesta] ' };
+/* Los motes y las bandas viven ahora en IDIOMAS (T.mote, T.banda). */
 
 async function avisar(env, datos) {
-  const resumen = `${MOTE[datos.tipo] || ''}${resumir(datos.mensaje, datos.senalados)}`;
+  idiomaCorreo(env);
+  const resumen = `${T.mote[datos.tipo] || ''}${resumir(datos.mensaje, datos.senalados)}`;
   /* El borrado lleva asunto propio (y por tanto su propio hilo) a propósito: es el único
      rastro de algo que ya no existe. Lo demás usa el asunto fijo de la web, para que caiga
      en el mismo hilo que las tandas aunque haya salido por el camino de emergencia. */
   const asunto = datos.tipo === 'eliminado'
-    ? `🗑️ Feedtack · ${datos.site}: [ELIMINADO] ${resumir(datos.mensaje, datos.senalados)}`
+    ? `🗑️ Feedtack · ${datos.site}: ${T.mote.eliminado}${resumir(datos.mensaje, datos.senalados)}`
     : `💬 Feedtack · ${datos.site}`;
   await mandar(env, {
     asunto,
@@ -882,55 +1000,51 @@ function esc(s) {
 function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], adjuntos = [], tipo, porSuAutor }) {
   const c = contexto || {};
   const filas = [
-    ['Página', c.titulo],
-    ['URL', c.url],
-    ['Enviado por', autor || 'sin identificar'],
-    ['Pantalla', c.viewport ? `${c.viewport} (ventana), ${c.pantalla} (monitor)` : ''],
-    ['Navegador', navegadorLegible(c.navegador)],
-    ['Momento', c.momento ? new Date(c.momento).toLocaleString('es-ES', { timeZone: 'Europe/Madrid' }) : '']
+    [T.pagina, c.titulo],
+    [T.url, c.url],
+    [T.enviadoPor, autor || T.sinIdentificar],
+    [T.pantalla, c.viewport ? T.ventanaMonitor(c.viewport, c.pantalla) : ''],
+    [T.navegador, navegadorLegible(c.navegador)],
+    [T.momento, c.momento ? new Date(c.momento).toLocaleString(T.locale, { timeZone: ZONA }) : '']
   ].filter(([, v]) => v);
 
-  const banda = {
-    nuevo: ['#0f172a', 'Nuevo comentario en'],
-    editado: ['#78350f', 'Comentario EDITADO en'],
-    reabierto: ['#7f1d1d', 'Comentario REABIERTO en'],
-    eliminado: ['#450a0a', 'Comentario ELIMINADO en'],
-    respuesta: ['#1e293b', 'Respuesta en un comentario de']
-  }[tipo] || ['#0f172a', 'Nuevo comentario en'];
+  const COLOR = { nuevo: '#0f172a', editado: '#78350f', reabierto: '#7f1d1d',
+                  eliminado: '#450a0a', respuesta: '#1e293b' };
+  const banda = [COLOR[tipo] || '#0f172a', T.banda[tipo] || T.banda.nuevo];
 
   const bloqueAnterior = anterior != null ? `
     <div style="margin:0 0 18px;padding:12px 14px;background:#fef3c7;border-radius:8px">
-      <div style="font:600 11.5px/1.4 -apple-system,sans-serif;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">Antes decía</div>
-      <div style="font:400 14px/1.55 -apple-system,sans-serif;color:#78350f;text-decoration:line-through;white-space:pre-wrap">${esc(anterior) || '(vacío)'}</div>
+      <div style="font:600 11.5px/1.4 -apple-system,sans-serif;color:#92400e;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">${T.antesDecia}</div>
+      <div style="font:400 14px/1.55 -apple-system,sans-serif;color:#78350f;text-decoration:line-through;white-space:pre-wrap">${esc(anterior) || T.vacio}</div>
     </div>` : '';
 
   const bloqueSenalado = senalados.length ? `
     <div style="margin:0 0 20px;padding:14px 16px;background:#eef2ff;border-left:3px solid #4f46e5;border-radius:0 8px 8px 0">
-      <div style="font:600 12px/1.4 -apple-system,sans-serif;color:#4338ca;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">${senalados.length > 1 ? senalados.length + ' elementos señalados' : 'Elemento señalado'}</div>
+      <div style="font:600 12px/1.4 -apple-system,sans-serif;color:#4338ca;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px">${T.senalados(senalados.length)}</div>
       ${senalados.map((s, i) => `
       <div style="${i ? 'margin-top:14px;padding-top:14px;border-top:1px solid #dfe3fb' : ''}">
         ${senalados.length > 1 ? `<div style="font:600 12px/1.4 -apple-system,sans-serif;color:#6366f1;margin-bottom:4px">${i + 1}</div>` : ''}
         ${s.texto ? `<div style="font:400 14px/1.5 -apple-system,sans-serif;color:#1e1b4b;margin-bottom:6px">"${esc(s.texto)}"</div>` : ''}
         <code style="display:block;font:400 12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#4338ca;word-break:break-all">${esc(s.selector)}</code>
-        ${s.rect ? `<div style="font:400 12px/1.5 -apple-system,sans-serif;color:#6366f1;margin-top:6px">${s.rect.w}×${s.rect.h} px, a ${s.rect.y} px del principio de la página</div>` : ''}
+        ${s.rect ? `<div style="font:400 12px/1.5 -apple-system,sans-serif;color:#6366f1;margin-top:6px">${T.desdeArriba(s.rect.w, s.rect.h, s.rect.y)}</div>` : ''}
       </div>`).join('')}
     </div>` : '';
 
   const bloqueAdjuntos = adjuntos.length ? `
     <div style="margin:20px 0 0;padding-top:16px;border-top:1px solid #e2e8f0">
-      <div style="font:600 12px/1.4 -apple-system,sans-serif;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">${adjuntos.length} adjunto${adjuntos.length > 1 ? 's' : ''}</div>
+      <div style="font:600 12px/1.4 -apple-system,sans-serif;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px">${T.adjuntos(adjuntos.length)}</div>
       ${adjuntos.map(lineaAdjunto).join('')}
     </div>` : '';
 
-  return `<!doctype html><html lang="es"><body style="margin:0;padding:24px;background:#f1f5f9">
+  return `<!doctype html><html lang="${T.html}"><body style="margin:0;padding:24px;background:#f1f5f9">
   <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.1)">
     <div style="padding:20px 24px;background:${banda[0]}">
       <div style="font:600 16px/1.4 -apple-system,sans-serif;color:#fff">${banda[1]} ${esc(site)}</div>
-      <div style="font:400 13px/1.5 -apple-system,sans-serif;color:#94a3b8;margin-top:2px">${esc(c.ruta === '/' ? 'Portada' : (c.ruta || ''))}</div>
+      <div style="font:400 13px/1.5 -apple-system,sans-serif;color:#94a3b8;margin-top:2px">${esc(c.ruta === '/' ? T.portada : (c.ruta || ''))}</div>
     </div>
     <div style="padding:24px">
       ${bloqueAnterior}
-      ${mensaje ? `<div style="font:400 15px/1.65 -apple-system,sans-serif;color:#0f172a;white-space:pre-wrap;margin-bottom:20px">${esc(mensaje)}</div>` : '<div style="font:400 14px/1.6 -apple-system,sans-serif;color:#94a3b8;font-style:italic;margin-bottom:20px">Sin texto, mira los adjuntos.</div>'}
+      ${mensaje ? `<div style="font:400 15px/1.65 -apple-system,sans-serif;color:#0f172a;white-space:pre-wrap;margin-bottom:20px">${esc(mensaje)}</div>` : `<div style="font:400 14px/1.6 -apple-system,sans-serif;color:#94a3b8;font-style:italic;margin-bottom:20px">${T.sinTexto}</div>`}
       ${bloqueSenalado}
       <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">
         ${filas.map(([k, v]) => `
@@ -942,7 +1056,7 @@ function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], a
       ${bloqueAdjuntos}
     </div>
     <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font:400 12px/1.5 -apple-system,sans-serif;color:#94a3b8">
-      ${tipo === 'eliminado' ? 'Este comentario se ha <b>borrado</b> de la lista' + (porSuAutor ? ', y lo ha borrado <b>quien lo escribió</b>' : ' desde el equipo') + '. Esta copia es el único rastro que queda.<br>' : ''}Enviado desde el widget Feedtack, instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
+      ${tipo === 'eliminado' ? T.borrado(porSuAutor) : ''}${T.pie(esc(site))}
     </div>
   </div>
 </body></html>`;
@@ -952,13 +1066,13 @@ function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], a
    nombre) y el de tanda (que además sabe si viaja dentro del correo o enlazado). Un
    adjunto que NO viaja se DICE, con su tamaño: si no, parece que no había captura. */
 function lineaAdjunto(a) {
-  const nombre = esc(a.nombre || a.filename || 'adjunto');
+  const nombre = esc(a.nombre || a.filename || T.adjunto);
   const mb = a.bytes ? ` (${(a.bytes / 1048576).toFixed(1)} MB)` : '';
   const cuerpo = a.enlace
     ? `<a href="${esc(a.enlace)}" style="color:#4f46e5;text-decoration:none">${nombre}</a>${mb}`
     : `${nombre}${mb}`;
   const nota = a.enlace && a.adjuntado === false
-    ? ' <span style="color:#b45309">no cabía en el correo, se abre con el enlace</span>'
+    ? ` <span style="color:#b45309">${T.noCabia}</span>`
     : '';
   return `<div style="font:400 13px/1.7 -apple-system,sans-serif;color:#475569">📎 ${cuerpo}${nota}</div>`;
 }
@@ -971,11 +1085,12 @@ function plantillaTanda(site, eventos, motivo) {
   const rutas = [...new Set(eventos.map(e => (e.contexto || {}).ruta || '/'))];
   const desde = new Date(eventos[0].creado);
   const hasta = new Date(eventos[eventos.length - 1].creado);
-  const franja = `${desde.toLocaleTimeString('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' })} a ${hasta.toLocaleTimeString('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' })}`;
+  const hora = d => d.toLocaleTimeString(T.locale, { timeZone: ZONA, hour: '2-digit', minute: '2-digit' });
+  const franja = T.franja(hora(desde), hora(hasta));
 
   const tarjetas = eventos.map((e, i) => {
     const c = e.contexto || {};
-    const cabecera = `${ICONO[e.tipo] || '💬'} ${{ nuevo: 'Comentario nuevo', respuesta: 'Respuesta', editado: 'Comentario editado', reabierto: 'Comentario reabierto' }[e.tipo] || e.tipo}`;
+    const cabecera = `${ICONO[e.tipo] || '💬'} ${T.tarjeta[e.tipo] || e.tipo}`;
     const senal = (e.senalados || []).map(s => `
         <div style="margin-top:8px">
           ${s.texto ? `<div style="font:400 13px/1.5 -apple-system,sans-serif;color:#1e1b4b">"${esc(s.texto)}"</div>` : ''}
@@ -985,28 +1100,28 @@ function plantillaTanda(site, eventos, motivo) {
       <div style="${i ? 'margin-top:14px;' : ''}border:1px solid #e2e8f0;border-radius:10px;overflow:hidden">
         <div style="padding:10px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0">
           <div style="font:600 12.5px/1.4 -apple-system,sans-serif;color:#334155">${cabecera}
-            <span style="font-weight:400;color:#94a3b8"> · ${esc(e.autor || 'sin identificar')} · ${new Date(e.creado).toLocaleTimeString('es-ES', { timeZone: 'Europe/Madrid', hour: '2-digit', minute: '2-digit' })}</span>
+            <span style="font-weight:400;color:#94a3b8"> · ${esc(e.autor || T.sinIdentificar)} · ${hora(new Date(e.creado))}</span>
           </div>
-          <div style="font:400 12px/1.5 -apple-system,sans-serif;color:#64748b;margin-top:2px">${esc(c.titulo || '')}${c.url ? ` · <a href="${esc(c.url)}" style="color:#4f46e5;text-decoration:none">${esc(c.ruta === '/' ? 'Portada' : (c.ruta || ''))}</a>` : ''}</div>
+          <div style="font:400 12px/1.5 -apple-system,sans-serif;color:#64748b;margin-top:2px">${esc(c.titulo || '')}${c.url ? ` · <a href="${esc(c.url)}" style="color:#4f46e5;text-decoration:none">${esc(c.ruta === '/' ? T.portada : (c.ruta || ''))}</a>` : ''}</div>
         </div>
         <div style="padding:14px">
-          ${e.anterior != null && e.tipo === 'editado' ? `<div style="font:400 13px/1.5 -apple-system,sans-serif;color:#92400e;text-decoration:line-through;margin-bottom:8px">${esc(e.anterior) || '(vacío)'}</div>` : ''}
-          ${e.mensaje ? `<div style="font:400 14.5px/1.6 -apple-system,sans-serif;color:#0f172a;white-space:pre-wrap">${esc(e.mensaje)}</div>` : '<div style="font:400 13.5px/1.6 -apple-system,sans-serif;color:#94a3b8;font-style:italic">Sin texto, mira lo señalado y los adjuntos.</div>'}
+          ${e.anterior != null && e.tipo === 'editado' ? `<div style="font:400 13px/1.5 -apple-system,sans-serif;color:#92400e;text-decoration:line-through;margin-bottom:8px">${esc(e.anterior) || T.vacio}</div>` : ''}
+          ${e.mensaje ? `<div style="font:400 14.5px/1.6 -apple-system,sans-serif;color:#0f172a;white-space:pre-wrap">${esc(e.mensaje)}</div>` : `<div style="font:400 13.5px/1.6 -apple-system,sans-serif;color:#94a3b8;font-style:italic">${T.sinTextoTanda}</div>`}
           ${senal}
           ${(e.adjuntos || []).length ? `<div style="margin-top:10px">${e.adjuntos.map(lineaAdjunto).join('')}</div>` : ''}
         </div>
       </div>`;
   }).join('');
 
-  return `<!doctype html><html lang="es"><body style="margin:0;padding:24px;background:#f1f5f9">
+  return `<!doctype html><html lang="${T.html}"><body style="margin:0;padding:24px;background:#f1f5f9">
   <div style="max-width:640px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.1)">
     <div style="padding:20px 24px;background:#0f172a">
-      <div style="font:600 16px/1.4 -apple-system,sans-serif;color:#fff">${eventos.length} novedades en ${esc(site)}</div>
-      <div style="font:400 13px/1.5 -apple-system,sans-serif;color:#94a3b8;margin-top:2px">${franja} · ${rutas.length === 1 ? esc(rutas[0] === '/' ? 'Portada' : rutas[0]) : rutas.length + ' páginas'}${motivo === 'corte' ? ' · tanda llena' : ''}</div>
+      <div style="font:600 16px/1.4 -apple-system,sans-serif;color:#fff">${T.novedades(eventos.length, esc(site))}</div>
+      <div style="font:400 13px/1.5 -apple-system,sans-serif;color:#94a3b8;margin-top:2px">${franja} · ${rutas.length === 1 ? esc(rutas[0] === '/' ? T.portada : rutas[0]) : T.paginas(rutas.length)}${motivo === 'corte' ? ` · ${T.tandaLlenaCorta}` : ''}</div>
     </div>
     <div style="padding:20px 24px">${tarjetas}</div>
     <div style="padding:14px 24px;background:#f8fafc;border-top:1px solid #e2e8f0;font:400 12px/1.5 -apple-system,sans-serif;color:#94a3b8">
-      Una tanda reúne lo que llega en ${VENTANA_MINUTOS} minutos desde el primer aviso, o ${CORTE_COMENTARIOS} avisos, lo que pase antes. Enviado desde el widget Feedtack instalado en la web de ${esc(site)}. Responder a este correo NO llega al cliente.
+      ${T.pieTanda(VENTANA_MINUTOS, CORTE_COMENTARIOS, esc(site))}
     </div>
   </div>
 </body></html>`;
@@ -1019,7 +1134,7 @@ function navegadorLegible(ua) {
     [/Chrome\/([\d.]+)/, 'Chrome'], [/Version\/([\d.]+).*Safari/, 'Safari'],
     [/Firefox\/([\d.]+)/, 'Firefox']
   ];
-  let nav = 'desconocido';
+  let nav = T.desconocido;
   for (const [re, nombre] of m) {
     const r = ua.match(re);
     if (r) { nav = `${nombre} ${r[1].split('.')[0]}`; break; }
@@ -1029,5 +1144,5 @@ function navegadorLegible(ua) {
     : /Mac OS X/.test(ua) ? 'macOS'
     : /Windows/.test(ua) ? 'Windows'
     : /Linux/.test(ua) ? 'Linux' : '';
-  return so ? `${nav} en ${so}` : nav;
+  return so ? `${nav} ${T.en} ${so}` : nav;
 }

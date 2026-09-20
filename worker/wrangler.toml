@@ -16,6 +16,11 @@ CORTE_COMENTARIOS = "10"
 # Where attachments too big for the email are downloaded from. It has to be a URL served
 # by this worker; left empty, oversized attachments go out with no link.
 BASE_PUBLICA = ""
+# Language of the notification email YOU receive: "es" (default) or "en". The widget picks
+# its own language from the page, this only changes the email.
+EMAIL_LANG = "es"
+# Timezone the email shows times in. Defaults to Europe/Madrid.
+ZONA_HORARIA = "Europe/Madrid"
 
 [[d1_databases]]
 binding = "DB"

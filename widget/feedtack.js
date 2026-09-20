@@ -1,14 +1,14 @@
 /*!
- * Feedtack — widget de feedback para webs en construcción (Websalia)
- * Un solo fichero, sin dependencias, aislado en Shadow DOM.
+ * Feedtack — feedback widget for sites under construction (Websalia)
+ * One file, no dependencies, isolated in a Shadow DOM.
  *
- *   <script src="/feedtack.js"          <- copia este fichero a tu propia web
- *           data-site="cliente-slug"
+ *   <script src="/feedtack.js"          <- copy this file to your own site
+ *           data-site="client-slug"
  *           data-endpoint="https://feedtack-api.../api"
  *           data-color="#4f46e5" defer></script>
  *
- * Se pone una vez en el pie y funciona en TODAS las páginas de la web.
- * Solo debe estar presente en entornos de revisión, nunca en producción.
+ * Goes in the footer once and works on EVERY page of the site.
+ * It must only ever be present on review environments, never in production.
  */
 (function () {
   'use strict';
@@ -35,14 +35,14 @@
   var MAX_TOTAL_BYTES = 20 * 1024 * 1024;
   var MAX_AUDIO_MS = 120000;
 
-  /* El producto se llamaba Tack Comment y desde el 8-sep-2026 se llama Feedtack. Lo que
-     se guarda en el navegador y lo que viaja por la URL pasa a llamarse feedtack_*, pero
-     seguimos LEYENDO los tack_* de antes, y no es cortesía: hay revisiones abiertas cuyos
-     comentarios están firmados con el id que vive bajo el nombre viejo, y enlaces
-     personales ?tack_yo= ya enviados por correo. Renombrar a secas le quitaría a quien ya
-     estaba comentando la autoría de lo suyo (y con ella, poder editarlo o borrarlo), sin
-     un solo error por ninguna parte. Los alias se retiran cuando no quede ninguna revisión
-     viva de antes del renombrado. */
+  /* The product was called Tack Comment and has been Feedtack since 8 September 2026.
+     What is kept in the browser and what travels in the URL is now feedtack_*, but we
+     still READ the old tack_* ones, and that is not politeness: there are open reviews
+     whose comments are signed with the id living under the old name, and personal
+     ?tack_yo= links already sent out by email. Renaming outright would take away, from
+     whoever was already commenting, the authorship of their own comments (and with it the
+     ability to edit or delete them), without a single error anywhere. The aliases go away
+     once no review started before the rename is still open. */
   function leer(clave) {
     try {
       var v = localStorage.getItem('feedtack_' + clave);
@@ -66,25 +66,25 @@
     } catch (e) { return null; }
   }
 
-  // La clave de administración llega por la URL (?feedtack_admin=...) y se queda
-  // en este navegador. Es lo que nos deja marcar cosas como resueltas.
+  // The team key arrives in the URL (?feedtack_admin=...) and stays in this browser.
+  // It is what allows marking things as resolved.
   var CLAVE_ADMIN = (function () {
     var p = parametro('admin');
     if (p) { guardar('admin', p); return p; }
     return leer('admin') || '';
   })();
 
-  // El nombre puede llegar por la URL (?feedtack_yo=Sol) y se queda en este navegador.
-  // Existe porque el campo "Tu nombre" es opcional y en la práctica se salta: con varias
-  // personas revisando la misma web, saber quién pidió cada cambio es justo lo que hace
-  // falta. Así cada una entra por su enlace y firma sin escribir nada.
+  // The name can arrive in the URL (?feedtack_yo=Sol) and stays in this browser. It
+  // exists because the "Your name" field is optional and in practice gets skipped: with
+  // several people reviewing the same site, knowing who asked for each change is exactly
+  // what you need. This way each of them opens their own link and signs without typing.
   (function () {
     var y = parametro('yo');
     if (y) { guardar('autor', y.slice(0, 60)); return; }
     leer('autor');      // sin enlace personal, migra al arrancar el nombre del nombre viejo
   })();
 
-  // Identidad anónima por navegador: es lo que permite editar lo propio.
+  // Anonymous identity per browser: it is what lets someone edit their own comments.
   var AUTOR_ID = (function () {
     try {
       var v = leer('autor_id');
@@ -230,8 +230,8 @@
     }
   };
 
-  /* Idioma: data-lang manda, si no el <html lang>, si no el del navegador.
-     Cualquier cosa que no sea español cae a inglés. */
+  /* Language: data-lang wins, then <html lang>, then the browser's.
+     Anything that is not Spanish falls back to English. */
   var IDIOMA = (function () {
     var d = (script.getAttribute('data-lang') || '').toLowerCase();
     if (TEXTOS[d]) return d;
@@ -241,8 +241,8 @@
 
   var T = TEXTOS[IDIOMA];
 
-  /* La guía para clientes: un clip corto por acción, la misma para todos y pública con
-     noindex. Va en el idioma del panel, no en el del navegador de quien la abre. */
+  /* The reviewer guide: one short clip per action, the same for everyone, public with
+     noindex. It opens in the panel's language, not the browser's. */
   var GUIA = 'https://feedtack.dev/guia/' + (IDIOMA === 'es' ? '' : 'en/');
 
   /* txt('clave', valor1, valor2...) sustituye los %s por orden. */
@@ -316,8 +316,8 @@
     };
   }
 
-  /* Posición real del elemento HOY. El rect guardado se hizo con otro tamaño de
-     ventana, así que si el elemento sigue existiendo mandamos sobre el guardado. */
+  /* The element's real position TODAY. The stored rect was taken at another window
+     size, so if the element still exists it wins over the stored one. */
   function posicionDe(s) {
     if (s.selector) {
       try {
@@ -350,11 +350,11 @@
    un boton flotante mas. La esquina de abajo a la derecha esta muy disputada (WhatsApp,
    chats, cookies) y esto se aparta de ahi sin dejar de estar a mano. */
 .tk.borde-derecho { right: 0; bottom: 26px; }
-/* El panel si se separa del borde: pegado a sangre se vería cortado. La pestaña es lo
-   unico que va a ras. */
+/* The panel does sit away from the edge: flush against it, it would look cut off. The
+   tab is the only thing that goes flush. */
 .tk.borde-derecho .panel { margin: 0 16px 0 0; }
 
-/* ---- pestaña discreta pegada al borde ---- */
+/* ---- discreet tab stuck to the edge ---- */
 .pestana {
   display: flex; align-items: center; gap: 0; height: 44px; padding: 0 6px 0 9px;
   background: rgba(15,23,42,.82); color: #fff; border: 0;
@@ -364,8 +364,8 @@
   transition: padding .22s cubic-bezier(.23,1,.32,1), background .22s, box-shadow .22s;
 }
 .pestana svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; transition: transform .22s cubic-bezier(.23,1,.32,1); }
-/* El texto existe siempre (para quien lee con lector de pantalla) y solo se despliega al
-   acercar el raton: en reposo la pestaña es una flecha y nada mas. */
+/* The text is always there (for anyone using a screen reader) and only unfolds on
+   hover: at rest the tab is an arrow and nothing else. */
 .pestana .etiq {
   max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0;
   font-size: 13px; font-weight: 600; letter-spacing: .01em;
@@ -429,7 +429,7 @@
 .cerrar:hover, .atras:hover { background: rgba(255,255,255,.07); color: #f8fafc; }
 .atras svg { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ---- pestañas ---- */
+/* ---- tabs ---- */
 .pestanas { display: flex; gap: 3px; padding: 12px 16px 0; flex: none; }
 .pest {
   flex: 1; height: 34px; border: 0; border-radius: 8px; cursor: pointer; font-family: inherit;
@@ -472,8 +472,8 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .acc svg { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .acc.grabando { border-color: #ef4444; background: rgba(239,68,68,.16); color: #fecaca; }
 
-/* Llamada de atención al botón de señalar cuando alguien va a enviar sin señalar.
-   Se repite 3 veces y para: un pulso infinito acaba siendo ruido. */
+/* Draws attention to the point-at button when someone is about to send without
+   pointing. It repeats 3 times and stops: an endless pulse becomes noise. */
 .acc.llamando {
   border-color: var(--acento);
   background: color-mix(in srgb, var(--acento) 20%, #1e293b);
@@ -487,7 +487,7 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 }
 @media (prefers-reduced-motion: reduce) { .acc.llamando { animation: none; } }
 
-/* ---- sugerencia de señalar ---- */
+/* ---- nudge to point at something ---- */
 .sugerencia {
   background: color-mix(in srgb, var(--acento) 13%, #1e293b);
   border: 1px solid color-mix(in srgb, var(--acento) 42%, transparent);
@@ -521,7 +521,7 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .onda { flex: 1; height: 3px; background: #334155; border-radius: 2px; overflow: hidden; }
 .onda i { display: block; height: 100%; width: 0; background: var(--acento); transition: width .1s linear; }
 
-/* ---- señalados ---- */
+/* ---- pointed-at elements ---- */
 .senalado { display: flex; align-items: center; gap: 9px; padding: 9px 11px; background: color-mix(in srgb, var(--acento) 14%, #1e293b); border: 1px solid color-mix(in srgb, var(--acento) 45%, transparent); border-radius: 9px; font-size: 12px; }
 .senalado .txt { flex: 1; color: #e2e8f0; overflow: hidden; }
 .senalado code { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: color-mix(in srgb, var(--acento) 55%, #fff); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 3px; }
@@ -535,8 +535,8 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 .enviar:hover:not(:disabled) { filter: brightness(1.12); }
 .enviar:active:not(:disabled) { transform: scale(.98); }
 .enviar:disabled { opacity: .5; cursor: not-allowed; }
-/* Mientras se invita a señalar, el botón de enviar deja de competir por la atención:
-   si no, hay dos botones de acento y el más grande empuja a lo contrario del aviso. */
+/* While the nudge to point is up, the send button stops competing for attention:
+   otherwise there are two accent buttons and the bigger one pushes the opposite way. */
 .enviar.atenuado { background: #1e293b; color: #94a3b8; border: 1px solid #334155; font-weight: 500; }
 .enviar.atenuado:hover:not(:disabled) { background: #273549; color: #e2e8f0; filter: none; }
 .secundario { height: 42px; padding: 0 16px; border: 1px solid #334155; background: #1e293b; color: #e2e8f0; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 500; font-family: inherit; }
@@ -558,8 +558,8 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 
 .resp-ta { min-height: 62px !important; font-size: 13px !important; }
 .resp-barra { display: flex; align-items: center; gap: 4px; margin-top: 7px; }
-/* Iconos pequeños, no botones: aqui responder es una accion dentro de una conversacion,
-   no el centro de la pantalla. El nombre aparece al pasar el raton. */
+/* Small icons, not buttons: replying here is an action inside a conversation, not the
+   centre of the screen. The label appears on hover. */
 .chico {
   position: relative; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
   background: transparent; border: 1px solid transparent; border-radius: 8px; color: #94a3b8;
@@ -593,8 +593,9 @@ textarea::placeholder, input::placeholder { color: #64748b; }
 /* Aviso cuando pedimos el nombre por primera vez. */
 input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px rgba(248,113,113,.18) !important; }
 
-/* Firma. Va al pie, en gris y pequeña: quien abre esto es un cliente mirando SU
-   web, y la firma no debe competir con el comentario que va a escribir. */
+/* Signature. It goes at the foot, small and grey: whoever opens this is a client
+   looking at THEIR site, and the signature must not compete with the comment they are
+   about to write. */
 .firma { padding: 10px 16px 13px; margin-top: 2px; text-align: center; font-size: 11px; line-height: 1.4; color: #64748b; border-top: 1px solid #1e293b; }
 .firma a { color: #94a3b8; text-decoration: none; font-weight: 600; }
 .firma a:hover { color: var(--acento); text-decoration: underline; }
@@ -715,7 +716,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   animation: none;
 }
 
-/* aro que resalta el elemento al ir a él desde la lista */
+/* ring that highlights the element when you jump to it from the list */
 .tk-foco {
   position: absolute; z-index: 2147481400; pointer-events: none; border-radius: 4px;
   border: 2px solid var(--tk-acento, #4f46e5);
@@ -724,7 +725,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 }
 @keyframes tk-entra { from { opacity: 0; } }
 
-/* regleta con la posición de cada comentario en la página */
+/* ruler showing where each comment sits on the page */
 .tk-regleta {
   position: fixed; right: 0; top: 0; bottom: 0; width: 22px; z-index: 2147481000;
   pointer-events: none;
@@ -769,7 +770,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   var senalados = [];
   var grabando = null;
   var borrador = { mensaje: '', autor: '' };
-  // Solo se invita a señalar una vez por comentario: insistir sería un peaje.
+  // The nudge to point happens once per comment: insisting would be a toll.
   var yaInvitado = false;
   var vista = 'nuevo';        // nuevo | lista | detalle | hecho
   var filtro = 'pendientes';  // pendientes | resueltos | todos
@@ -822,8 +823,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
   function deEstaPagina(c) { return c.ruta === location.pathname; }
 
-  /* El <title> suele ser "Sección · Nombre del sitio", y en la lista eso ocupa
-     tres líneas. Nos quedamos con la primera parte. */
+  /* The <title> is usually "Section · Site name", and in the list that takes three
+     lines. We keep the first part. */
   function nombrePagina(c) {
     var t = (c.titulo || '').split(/\s[·|]\s|\s[–—-]\s/)[0].trim();
     if (!t || t.length < 2) t = c.ruta === '/' ? txt('portada') : c.ruta;
@@ -839,8 +840,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     });
   }
 
-  /* Orden: primero esta página, y dentro de cada página de arriba abajo, como se
-     lee. Los que no señalan nada concreto van al final de su grupo. */
+  /* Order: this page first, and within each page top to bottom, the way you read.
+     The ones not pointing at anything in particular go at the end of their group. */
   function ordenados(lista) {
     var conY = lista.map(function (c) {
       var p = c.senalados && c.senalados.length ? posicionDe(c.senalados[0]) : null;
@@ -856,19 +857,19 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     return conY.map(function (x) { return x.c; });
   }
 
-  // El número que ve el usuario es el orden dentro de su página
+  // The number the user sees is the position within their own page
   function numeroDe(c) {
     var suPagina = ordenados(comentarios.filter(function (x) { return x.ruta === c.ruta; }));
     return suPagina.findIndex(function (x) { return x.id === c.id; }) + 1;
   }
 
-  // ------------------------------------------------------------ marcas en la página
+  // ------------------------------------------------------------ pins on the page
 
   var capaPins, regleta;
 
-  /* Esconder las chinchetas. Nace de revisar la web con el cliente delante: las
-     chinchetas tapan justo lo que se está mirando y no habia forma de quitarlas sin
-     cerrar el widget. Se recuerda entre paginas, que es como se usa. */
+  /* Hiding the pins. It comes from reviewing a site with the client watching: the pins
+     cover exactly what you are looking at and there was no way to get rid of them without
+     closing the widget. It is remembered across pages, which is how it gets used. */
   var marcasOcultas = (function () {
     return leer('ocultar') === '1';
   })();
@@ -916,8 +917,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         capaPins.push(pin);
       }
 
-      /* Sin elemento señalado no hay posición, y ponerle la marca arriba del todo
-         sería mentir sobre dónde está. Esos viven solo en la lista. */
+      /* With no element pointed at there is no position, and putting the pin at the
+         very top would be lying about where it is. Those live only in the list. */
       if (!p) return;
       var tick = el('div', { class: 'tk-tick', title: 'Comentario ' + n });
       tick.style.background = color;
@@ -934,9 +935,9 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
      dos segundos; este se queda hasta que se desmarca, para poder leer el comentario
      viendo a que trozo de la pagina se refiere. */
   var resaltadoFijo = null;
-  /* Borrador de la respuesta que se esta escribiendo dentro de un comentario. Vive aparte
-     del borrador del comentario nuevo: son dos cosas a la vez y mezclarlas hace que al
-     responder se pierda lo que estabas escribiendo en la otra pestaña. */
+  /* Draft of the reply being written inside a comment. It lives apart from the draft of
+     a new comment: they are two things at once, and mixing them means replying loses
+     whatever you were writing in the other tab. */
   var respBorrador = { mensaje: '', senalados: [], adjuntos: [] };
   var respondiendoA = null;
   /* El aro. En su version FIJA no oscurece el resto de la pagina: si lo hiciera no se
@@ -956,8 +957,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     foco = null;
   }
 
-  /* Al cambiar el tamaño de la ventana el area medida se mueve, asi que el aro fijo hay
-     que recolocarlo o se queda señalando un sitio que ya no es. */
+  /* Resizing the window moves the measured area, so the fixed ring has to be put back
+     or it ends up pointing at a place that is no longer there. */
   function recolocarFoco() {
     if (!resaltadoFijo) return;
     var c = comentarios.filter(function (x) { return x.id === resaltadoFijo; })[0];
@@ -979,8 +980,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     }
 
     var p = c.senalados && c.senalados.length ? posicionDe(c.senalados[0]) : null;
-    /* Sin elemento señalado no hay a donde llevarle. Antes esto era un `return` mudo:
-       clicabas el comentario y no pasaba nada, que parece que este roto. */
+    /* With no element pointed at there is nowhere to take them. This used to be a mute
+       `return`: you clicked the comment and nothing happened, which looks broken. */
     if (!p) { mostrarError(txt('sinSenalar')); return; }
     /* Y si estaban escondidas, al ir a un comentario se vuelven a ver: si no, el aro
        aparece sin su chincheta y no se entiende de cual es. */
@@ -1073,10 +1074,11 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     if (vista === 'nuevo' && refs.mensaje) refs.mensaje.focus();
   }
 
-  /* Firma discreta. Quien usa esto es un cliente mirando SU web, no el nuestro:
-     va al pie, en gris y pequeña, y nunca compite con el comentario que va a escribir.
-     Encima, el enlace a la guía: es lo único que un cliente nuevo puede necesitar y por
-     eso está siempre a la vista, pero en el pie, que no es donde va a mirar quien ya sabe. */
+  /* Discreet signature. Whoever uses this is a client looking at THEIR site, not ours:
+     it goes at the foot, small and grey, and never competes with the comment they are
+     about to write. Above it, the link to the guide: it is the one thing a new client
+     might need, so it is always in sight, but at the foot, which is not where someone
+     who already knows is going to look. */
   function firma() {
     var ayuda = el('a', { class: 'firma-ayuda', text: txt('comoFunciona'), target: '_blank', rel: 'noopener' });
     ayuda.href = GUIA;
@@ -1099,8 +1101,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     return el('div', { class: 'cab' }, [t, x]);
   }
 
-  /* El interruptor de ocultar los marcadores va debajo de las pestañas y no dentro de una
-     de ellas: tapan lo que estás mirando tanto si escribes como si repasas el historial. */
+  /* The switch that hides the pins goes below the tabs and not inside one of them: they
+     cover what you are looking at whether you are writing or reading the history. */
   function interruptorOcultar() {
     var caja = el('label', { class: 'ocultar' });
     var chk = el('input', { type: 'checkbox' });
@@ -1353,20 +1355,22 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     editando = false;
     vista = 'detalle';
     abierto = true;
-    /* El resaltado viene puesto de serie: al abrir un feedback lo primero que quieres es
-       ver a que trozo de pagina se refiere, y que se fuera a los dos segundos obligaba a
-       marcarlo a mano cada vez. Solo si señalo algo Y esta en esta pagina; si no, la
-       casilla ni se pinta y dejar el estado puesto seria mentira.
-       Se fija ANTES de pintar el panel, que es quien lee la casilla. */
+    /* The highlight is on by default: when you open a comment the first thing you want
+       is to see which piece of the page it refers to, and having it disappear after two
+       seconds meant ticking it by hand every time. Only if it points at something AND
+       that something is on this page; otherwise the checkbox is not even drawn, and
+       leaving the state on would be a lie.
+       It is set BEFORE the panel is painted, since the panel reads the checkbox. */
     var c = comentarios.filter(function (x) { return x.id === id; })[0];
     resaltadoFijo = (c && deEstaPagina(c) && (c.senalados || []).length) ? id : null;
     pintarPanel();
     irA(id);
   }
 
-  /* La conversacion dentro de un comentario. Es lo que convierte esto en un hilo y no en
-     un buzon: la respuesta admite lo mismo que el comentario (texto, señalar una zona,
-     adjuntar), pero NO crea marcador propio. Todo cuelga del comentario original. */
+  /* The conversation inside a comment. This is what turns it into a thread rather than
+     an inbox: a reply accepts the same as a comment (text, pointing at an area,
+     attachments), but does NOT create a pin of its own. Everything hangs off the
+     original comment. */
   function hilo(c) {
     var caja = el('div', { class: 'hilo' });
     var lista = c.respuestas || [];
@@ -1392,10 +1396,10 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       });
     }
 
-    /* Compositor SIEMPRE a la vista: un boton de "Responder" que solo sirve para
-       revelar un campo es un clic de peaje. Debajo, iconos pequeños en vez de botones
-       grandes, que aqui son una accion secundaria dentro de una conversacion, no el
-       centro de la pantalla. Cada uno lleva su tooltip. */
+    /* The composer is ALWAYS in sight: a "Reply" button whose only job is to reveal a
+       field is a toll click. Below it, small icons instead of big buttons, because here
+       they are a secondary action inside a conversation, not the centre of the screen.
+       Each one carries its tooltip. */
     var ta = el('textarea', { class: 'resp-ta', placeholder: txt('escribeRespuesta'), 'aria-label': txt('responder') });
     ta.value = respBorrador.mensaje;
     ta.addEventListener('input', function () { respBorrador.mensaje = ta.value; });
@@ -1544,8 +1548,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       cuerpo.appendChild(irBtn);
     }
 
-    /* Mantener el area resaltada mientras se lee el comentario. Solo tiene sentido si
-       señalo algo y si ese algo esta en la pagina que estas viendo. */
+    /* Keep the area highlighted while the comment is being read. It only makes sense if
+       it points at something and that something is on the page you are looking at. */
     if (deEstaPagina(c) && (c.senalados || []).length) {
       var fijar = el('label', { class: 'ocultar' });
       var chkFijar = el('input', { type: 'checkbox' });
@@ -1577,7 +1581,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     cuerpo.appendChild(datos);
     cuerpo.appendChild(refs.error);
 
-    // ---- acciones según quién eres y en qué estado está
+    // ---- actions, depending on who you are and what state it is in
     var botones = [];
     var mio = c.autorId === AUTOR_ID;
     var cerrado = c.estado === 'confirmado';
@@ -1590,8 +1594,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
     if (esAdmin() && !cerrado) {
       if (mio) {
-        /* Nota propia del equipo (recordatorio, aviso a un compañero): no tiene
-           sentido "resolverla" y quedarse esperando a que alguien la confirme. */
+        /* A note the team wrote to itself (a reminder, a heads-up to a colleague):
+           there is no sense in "resolving" it and waiting for someone to confirm. */
         var hecha = el('button', { class: 'enviar', type: 'button', text: txt('hecha') });
         hecha.addEventListener('click', function () { cambiar(c, 'confirmado', hecha); });
         botones.unshift(hecha);
@@ -1630,8 +1634,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       botones.push(reabrir);
     }
 
-    /* El boton de "ir a esa pagina" solo se queda para los comentarios SIN elemento
-       señalado: con elemento ya lo cubre el de arriba, que ademas resalta el sitio. */
+    /* The "go to that page" button only stays for comments with NO element pointed at:
+       with an element the one above already covers it, and it highlights the spot too. */
     if (!deEstaPagina(c) && !(c.senalados || []).length) {
       var ir = el('button', { class: 'secundario', type: 'button', text: txt('irPagina') });
       ir.addEventListener('click', function () { location.href = c.url; });
@@ -1649,10 +1653,10 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       cuerpo.appendChild(el('div', { class: 'nota', text: txt('notaResuelto') }));
     }
 
-    /* Eliminar lo ve el equipo y, desde el 7-sep-2026, también el autor sobre lo suyo:
-       quien escribió algo por error tiene que poder quitarlo sin pedírnoslo. Va aparte
-       del resto de botones porque es la única acción sin vuelta atrás, y con
-       confirmación en dos pasos dentro del panel. */
+    /* Delete is visible to the team and, since 7 September 2026, to the author on their
+       own comments: whoever wrote something by mistake has to be able to remove it
+       without asking us. It sits apart from the other buttons because it is the only
+       action with no way back, and it confirms in two steps inside the panel. */
     if (esAdmin() || mio) {
       refs.borrar = el('div');
       refs.borrar.style.cssText = 'margin-top:4px';
@@ -1740,13 +1744,13 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     });
   }
 
-  // ------------------------------------------------------- modo señalar elemento
+  // ------------------------------------------------------- point-at-element mode
 
   var marca, etiqueta, aviso, elegido = null;
 
-  /* A donde va lo que se señale: al comentario nuevo o a la respuesta que se esta
-     escribiendo dentro de un comentario. Sin esto, señalar desde una respuesta metia el
-     elemento en el borrador del comentario nuevo y te devolvia a la otra pestaña. */
+  /* Where whatever gets pointed at ends up: in the new comment, or in the reply being
+     written inside a comment. Without this, pointing from a reply put the element into
+     the new comment's draft and sent you back to the other tab. */
   var senalarDestino = 'nuevo';
 
   function activarSenalar(destino) {
@@ -1787,8 +1791,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     return t;
   }
 
-  /* ¿Este elemento se puede señalar? Descarta lo nuestro, la raíz del documento y
-     lo que no ocupa sitio (un contenedor de 0x0 no se puede enmarcar ni entender). */
+  /* Can this element be pointed at? Rules out our own nodes, the document root and
+     anything taking up no space (a 0x0 container cannot be framed or understood). */
   function senalable(t) {
     if (!t || t.nodeType !== 1) return false;
     if (t === host || host.contains(t)) return false;
@@ -1821,10 +1825,10 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     pintarMarca(t);
   }
 
-  /* Moverse por la jerarquía con el teclado. Existe porque el ratón solo alcanza el
-     elemento más profundo que hay bajo el cursor: en un hero con slider no hay forma
-     de elegir entre la foto, el slider y la sección entera, y son tres comentarios
-     distintos. Mismo gesto que el inspector del navegador. */
+  /* Walking the hierarchy with the keyboard. It exists because the mouse only reaches
+     the deepest element under the cursor: in a hero with a slider there is no way to
+     choose between the photo, the slider and the whole section, and those are three
+     different comments. Same gesture as the browser's inspector. */
   function hermano(t, dir) {
     var n = t;
     while (n) {
@@ -1860,8 +1864,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
   }
 
   function alClicar(e) {
-    // Ojo: NO se relee del evento. Si se ha navegado con el teclado, el elemento
-    // bueno es el que está enmarcado, no el que hay debajo del cursor.
+    // Careful: this is NOT re-read from the event. If the keyboard was used to walk the
+    // hierarchy, the right element is the framed one, not the one under the cursor.
     var t = elegido || objetivo(e);
     e.preventDefault(); e.stopPropagation();
     if (t) {
@@ -1984,7 +1988,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     }
   }
 
-  // ---------------------------------------------------------------------- envío
+  // ---------------------------------------------------------------------- sending
 
   function enviar() {
     var texto = (refs.mensaje.value || '').trim();
@@ -1993,8 +1997,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     }
     if (!CFG.api) return mostrarError(txt('errSinEndpoint'));
 
-    /* Si no ha señalado nada, se lo proponemos UNA vez. Sin señalar, el comentario
-       queda suelto en la página: no podemos llevarle de vuelta ni poner la chincheta. */
+    /* If they pointed at nothing, we suggest it ONCE. With nothing pointed at, the
+       comment floats on the page: we cannot take them back to it or place the pin. */
     if (!senalados.length && !yaInvitado) {
       yaInvitado = true;
       invitarASenalar();
@@ -2037,7 +2041,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         adjuntos.forEach(function (a) { URL.revokeObjectURL(a.url); });
         adjuntos = []; senalados = [];
         borrador = { mensaje: '', autor: borrador.autor };
-        yaInvitado = false;   // el siguiente comentario vuelve a recibir la invitación
+        yaInvitado = false;   // the next comment gets the nudge again
         return cargar();
       })
       .then(function () { vista = 'hecho'; pintarPanel(); })
@@ -2071,10 +2075,10 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
     if (refs.enviar) refs.enviar.classList.add('atenuado');
 
-    // y el botón de señalar llama la atención un momento
+    // and the point-at button draws attention for a moment
     if (refs.btnSenalar) {
       refs.btnSenalar.classList.remove('llamando');
-      void refs.btnSenalar.offsetWidth;   // reinicia la animación
+      void refs.btnSenalar.offsetWidth;   // restarts the animation
       refs.btnSenalar.classList.add('llamando');
     }
     refs.sugerencia.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
@@ -2103,7 +2107,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
 
   // ------------------------------------------------------------------- arranque
 
-  /* ¿Venimos de otra pagina siguiendo un feedback? El id viaja en el ancla. */
+  /* Did we arrive from another page following a comment? The id travels in the hash. */
   function idDelAncla() {
     try {
       var m = /(?:^|#|&)tack=([\w-]{6,})/.exec(location.hash || '');
@@ -2121,8 +2125,8 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       /* Se limpia el ancla para que al recargar o compartir la direccion no vuelva a
          abrirse solo, y para no dejar basura en la barra. */
       try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-      /* Un respiro antes de medir: al llegar de otra pagina las imagenes perezosas
-         todavia estan colocandose y el sitio señalado se mueve. */
+      /* A breath before measuring: arriving from another page, lazy images are still
+         settling into place and the pointed-at spot moves. */
       setTimeout(function () { abrirDetalle(id); }, 450);
     }).catch(function () {});
   }
@@ -2140,7 +2144,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     estado: function () { return { comentarios: comentarios, autorId: AUTOR_ID, admin: esAdmin() }; },
     config: CFG
   };
-  // El nombre viejo sigue respondiendo: hay guiones de QA y consolas abiertas que llaman
-  // window.Tack, y una línea aquí es más barata que una sorpresa a mitad de una revisión.
+  // The old name still answers: there are QA scripts and open consoles calling
+  // window.Tack, and one line here is cheaper than a surprise mid-review.
   window.Tack = window.Feedtack;
 })();

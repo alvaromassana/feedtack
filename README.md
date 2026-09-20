@@ -150,6 +150,13 @@ Open `worker/wrangler.toml` and set:
 `VENTANA_MINUTOS` and `CORTE_COMENTARIOS` control how comments are grouped into one email.
 The defaults are sensible; leave them alone until the volume tells you otherwise.
 
+Two optional ones:
+
+| Field | What to put |
+|---|---|
+| `EMAIL_LANG` | Language of the notification email you receive: `es` (the default) or `en`. Nothing else reads it: the widget picks its own language from the page or from `data-lang`. |
+| `ZONA_HORARIA` | The timezone the email shows times in, e.g. `Europe/London`. Defaults to `Europe/Madrid`. |
+
 #### Create the tables, deploy, and set the secrets
 
 ```bash

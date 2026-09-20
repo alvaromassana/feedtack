@@ -39,6 +39,14 @@ jobs:
       - name: Shell parses
         run: bash -n wordpress/construir.sh
 
+      # 🔴 node --check is NOT enough for the Worker. A mismatched quote inside a nested
+      # template literal (opening with ' and closing with `) still parses as valid
+      # JavaScript and silently changes what the email says. Only a real bundle catches
+      # it. This builds the Worker without deploying and without any Cloudflare account.
+      - name: The Worker actually builds
+        working-directory: worker
+        run: npx --yes wrangler@4 deploy --dry-run --outdir /tmp/build
+
   plugin:
     name: WordPress production lock
     runs-on: ubuntu-latest
