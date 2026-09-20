@@ -1,18 +1,18 @@
 /**
- * Genera la guía para clientes en los dos idiomas desde una sola fuente de textos,
- * para que no se desincronicen.
+ * Builds the reviewer guide in both languages from one source of strings, so the two
+ * cannot drift apart.
  *
  *   node guia/construir.mjs
  *
- * Salida: guia/index.html (es) y guia/en/index.html (en). Estáticas, sin dependencias.
- * Los clips los graba qa/guia-clips.mjs y viven en guia/clips/.
+ * Output: guia/index.html (es) and guia/en/index.html (en). Static, no dependencies.
+ * The clips are recorded by qa/guia-clips.mjs and live in guia/clips/.
  */
 import { mkdirSync, writeFileSync } from 'fs';
 
 const DIR = new URL('./', import.meta.url).pathname;
 
-/* Cada sección: título de cuatro palabras, UNA frase, y su clip. El orden es el que
-   vive el cliente, no el del menú del widget. */
+/* One section each: a four-word title, ONE sentence, and its clip. The order is the one
+   the client lives through, not the order of the widget's menu. */
 const SECCIONES = [
   { clip: '01-entrar', es: ['Entras por tu enlace', 'Abre la web con el enlace que te hemos mandado y pulsa la pestaña de la derecha: tu nombre ya está puesto y no tienes que registrarte.'],
     en: ['Open your personal link', 'Open the site with the link we sent you and click the tab on the right: your name is already filled in, and there is nothing to sign up for.'] },
@@ -81,12 +81,13 @@ const CAB = {
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/* El mp4 pesa unas diez veces menos que el GIF (1,5 MB los once frente a 9,2 MB), así que
-   en la página manda el vídeo. El poster es un JPG de mitad del clip, no el GIF: un poster
-   de 800 KB deja la página inservible en el móvil del cliente, y el primer fotograma sale
-   en blanco. El GIF queda de respaldo para el navegador que no reproduzca el vídeo, y es lo
-   que se incrusta en el correo. El vídeo se descarga solo cuando entra en pantalla (el
-   script del final): once autoplay a la vez son 1,5 MB de golpe en una conexión móvil. */
+/* The mp4 weighs about ten times less than the GIF (1.5 MB for the eleven of them against
+   9.2 MB), so video wins on the page. The poster is a JPG from the middle of the clip, not
+   the GIF: an 800 KB poster makes the page useless on the client's phone, and the first
+   frame comes out blank. The GIF stays as the fallback for a browser that will not play
+   video, and it is what gets embedded in email. The video only downloads when it reaches
+   the screen (the script at the end): eleven autoplays at once is 1.5 MB in one go on a
+   mobile connection. */
 function pieza(clip, titulo, frase, ruta) {
   return `      <section class="paso">
         <h3>${esc(titulo)}</h3>
@@ -191,8 +192,8 @@ ${saber}
     <footer>${esc(c.pie)} <a href="https://www.websalia.com/?utm_source=feedtack&amp;utm_medium=guia" target="_blank" rel="noopener">Websalia</a></footer>
   </div>
 <script>
-/* Cada vídeo se descarga cuando llega a la pantalla, no al abrir la página. Sin
-   IntersectionObserver (navegador viejo) se cargan todos, que es como estaba antes. */
+/* Each video downloads when it reaches the screen, not when the page opens. Without
+   IntersectionObserver (an old browser) they all load, which is how it used to be. */
 (function () {
   var vids = [].slice.call(document.querySelectorAll('video'));
   function cargar(v) {
@@ -201,8 +202,8 @@ ${saber}
     var s = v.querySelector('source[data-src]');
     if (s) { s.src = s.dataset.src; v.load(); v.play().catch(function () {}); }
   }
-  /* En el móvil el clip se queda en unos 350 px de ancho y el panel del widget no se
-     lee. Tocarlo lo abre a pantalla completa, que es lo que se espera de un vídeo. */
+  /* On a phone the clip sits at about 350 px wide and the widget's panel is unreadable.
+     Tapping it goes fullscreen, which is what you expect from a video. */
   vids.forEach(function (v) {
     v.style.cursor = 'zoom-in';
     v.addEventListener('click', function () {
@@ -225,4 +226,4 @@ ${saber}
 mkdirSync(DIR + 'en', { recursive: true });
 writeFileSync(DIR + 'index.html', pagina('es'));
 writeFileSync(DIR + 'en/index.html', pagina('en'));
-console.log('guia/index.html y guia/en/index.html generadas');
+console.log('guia/index.html and guia/en/index.html written');

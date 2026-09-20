@@ -167,8 +167,8 @@
     <footer>Hecho por <a href="https://www.websalia.com/?utm_source=feedtack&amp;utm_medium=guia" target="_blank" rel="noopener">Websalia</a></footer>
   </div>
 <script>
-/* Cada vídeo se descarga cuando llega a la pantalla, no al abrir la página. Sin
-   IntersectionObserver (navegador viejo) se cargan todos, que es como estaba antes. */
+/* Each video downloads when it reaches the screen, not when the page opens. Without
+   IntersectionObserver (an old browser) they all load, which is how it used to be. */
 (function () {
   var vids = [].slice.call(document.querySelectorAll('video'));
   function cargar(v) {
@@ -177,8 +177,8 @@
     var s = v.querySelector('source[data-src]');
     if (s) { s.src = s.dataset.src; v.load(); v.play().catch(function () {}); }
   }
-  /* En el móvil el clip se queda en unos 350 px de ancho y el panel del widget no se
-     lee. Tocarlo lo abre a pantalla completa, que es lo que se espera de un vídeo. */
+  /* On a phone the clip sits at about 350 px wide and the widget's panel is unreadable.
+     Tapping it goes fullscreen, which is what you expect from a video. */
   vids.forEach(function (v) {
     v.style.cursor = 'zoom-in';
     v.addEventListener('click', function () {

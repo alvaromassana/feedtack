@@ -2,32 +2,32 @@ name = "feedtack-api"
 main = "src/index.js"
 compatibility_date = "2026-07-01"
 
-# Se publica en *.workers.dev. Si quieres dominio propio, añade aquí la ruta.
+# Published on *.workers.dev. Add a route here if you want your own domain.
 
 [vars]
 DESTINO = "tu@correo.com"
 REMITENTE = "Feedtack <feedtack@tudominio.com>"
-# Orígenes autorizados a enviar comentarios (CORS). Uno por dominio de revisión.
+# Origins allowed to send comments (CORS). One per review domain.
 ORIGENES_PERMITIDOS = "https://staging.tucliente.com,http://localhost:8791"
-# Agrupación de avisos: el primer comentario abre la ventana y al cerrarse sale UN correo
-# con todo lo que haya caído. El corte por número es el seguro de una tanda muy viva.
+# Notification batching: the first comment opens the window, and when it closes ONE email
+# goes out with everything that landed. The count cut-off is the safety valve for a busy batch.
 VENTANA_MINUTOS = "10"
 CORTE_COMENTARIOS = "10"
-# De dónde se descargan las capturas que no caben en el correo. Tiene que ser una URL
-# que responda a este worker; si se deja vacía, los adjuntos van sin enlace.
+# Where attachments too big for the email are downloaded from. It has to be a URL served
+# by this worker; left empty, oversized attachments go out with no link.
 BASE_PUBLICA = ""
 
 [[d1_databases]]
 binding = "DB"
 database_name = "feedtack"
-database_id = "PON_AQUI_EL_TUYO"   # lo da: wrangler d1 create feedtack
+database_id = "PON_AQUI_EL_TUYO"   # you get this from: wrangler d1 create feedtack
 
-# Las capturas se guardan aquí porque un correo diferido no puede llevarlas en la mano.
+# Attachments live here: a deferred email cannot carry them in hand.
 [[r2_buckets]]
 binding = "ADJUNTOS"
-bucket_name = "feedtack-adjuntos"   # lo da: wrangler r2 bucket create feedtack-adjuntos
+bucket_name = "feedtack-adjuntos"   # you get this from: wrangler r2 bucket create feedtack-adjuntos
 
-# Un reloj por web. Sin sondeo: con nadie comentando no se ejecuta nada.
+# One clock per site. No polling: with nobody commenting, nothing runs.
 [[durable_objects.bindings]]
 name = "TANDAS_DO"
 class_name = "Tandas"
@@ -37,6 +37,6 @@ tag = "v1"
 new_sqlite_classes = ["Tandas"]
 
 # Secrets (wrangler secret put ...):
-#   RESEND_API_KEY   clave de Resend
-#   CLAVE_ADMIN      la que nos deja marcar un comentario como resuelto
-#   TANDAS           ponla a "no" para volver a un correo por evento sin desplegar código
+#   RESEND_API_KEY   your Resend key
+#   CLAVE_ADMIN      the team key that allows resolving someone else's comment
+#   TANDAS           set it to "no" to go back to one email per event, without deploying code
