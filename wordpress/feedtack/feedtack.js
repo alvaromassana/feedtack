@@ -1270,23 +1270,31 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     return env;
   }
 
+  /* Una fila de adjunto pendiente de enviar, con su "×" para arrepentirse. La usan las
+     DOS cajas que pueden llevar adjuntos (el comentario nuevo y la respuesta): hasta el
+     21-sep-2026 la respuesta solo enseñaba un contador de texto, así que lo que subías
+     ahí ya no se podía quitar. */
+  function filaAdjunto(a, quitar) {
+    var fila = el('div', { class: 'adj' });
+    if (a.tipo === 'audio') fila.appendChild(reproductor(a));
+    else {
+      fila.appendChild(el('img', { class: 'mini', src: a.url, alt: '' }));
+      fila.appendChild(el('span', { class: 'nom', text: a.nombre }));
+    }
+    fila.appendChild(el('span', { class: 'peso', text: bytes(a.blob.size) }));
+    var q = el('button', { class: 'quitar', type: 'button', text: '×', 'aria-label': txt('quitarAdjunto') });
+    q.addEventListener('click', quitar);
+    fila.appendChild(q);
+    return fila;
+  }
+
   function pintarAdjuntos() {
     if (!refs.adjuntos) return;
     refs.adjuntos.textContent = '';
     adjuntos.forEach(function (a, i) {
-      var fila = el('div', { class: 'adj' });
-      if (a.tipo === 'audio') fila.appendChild(reproductor(a));
-      else {
-        fila.appendChild(el('img', { class: 'mini', src: a.url, alt: '' }));
-        fila.appendChild(el('span', { class: 'nom', text: a.nombre }));
-      }
-      fila.appendChild(el('span', { class: 'peso', text: bytes(a.blob.size) }));
-      var q = el('button', { class: 'quitar', type: 'button', text: '×', 'aria-label': txt('quitarAdjunto') });
-      q.addEventListener('click', function () {
+      refs.adjuntos.appendChild(filaAdjunto(a, function () {
         URL.revokeObjectURL(a.url); adjuntos.splice(i, 1); pintarAdjuntos();
-      });
-      fila.appendChild(q);
-      refs.adjuntos.appendChild(fila);
+      }));
     });
   }
 
@@ -1427,19 +1435,23 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     ta.addEventListener('input', function () { respBorrador.mensaje = ta.value; });
     caja.appendChild(ta);
 
-    var pendientesAdj = [];
     if (respBorrador.senalados.length) {
-      pendientesAdj.push(respBorrador.senalados.map(function (x) { return x.etiqueta; }).join(', '));
+      caja.appendChild(el('div', { class: 'resp-sen', text: respBorrador.senalados.map(function (x) { return x.etiqueta; }).join(', ') }));
     }
     if (respBorrador.adjuntos.length) {
-      pendientesAdj.push(txtAdj(respBorrador.adjuntos.length));
+      var listaAdj = el('div', { class: 'adjuntos' });
+      respBorrador.adjuntos.forEach(function (a, i) {
+        listaAdj.appendChild(filaAdjunto(a, function () {
+          URL.revokeObjectURL(a.url); respBorrador.adjuntos.splice(i, 1); pintarPanel();
+        }));
+      });
+      caja.appendChild(listaAdj);
     }
-    if (pendientesAdj.length) caja.appendChild(el('div', { class: 'resp-sen', text: pendientesAdj.join('  ·  ') }));
 
     var subirR = el('input', { type: 'file', accept: 'image/*', multiple: '' });
     subirR.style.display = 'none';
     subirR.addEventListener('change', function () {
-      [].forEach.call(subirR.files, function (fi) { respBorrador.adjuntos.push({ nombre: fi.name, blob: fi }); });
+      [].forEach.call(subirR.files, function (fi) { respBorrador.adjuntos.push({ nombre: fi.name, blob: fi, url: URL.createObjectURL(fi) }); });
       subirR.value = '';
       pintarPanel();
     });
@@ -1488,6 +1500,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       .then(function () { return cargar(); })
       .then(function () {
         respondiendoA = null;
+        respBorrador.adjuntos.forEach(function (a) { if (a.url) URL.revokeObjectURL(a.url); });
         respBorrador = { mensaje: '', senalados: [], adjuntos: [] };
         pintarPanel();
       })
@@ -1951,7 +1964,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         raiz.style.display = '';
         vista = aRespuesta ? 'detalle' : 'nuevo';
         if (blob) {
-          if (aRespuesta) respBorrador.adjuntos.push({ nombre: 'captura.png', blob: blob });
+          if (aRespuesta) respBorrador.adjuntos.push({ nombre: 'captura.png', blob: blob, url: URL.createObjectURL(blob) });
           else anadir('imagen', 'captura.png', blob);
         }
         pintarPanel();
