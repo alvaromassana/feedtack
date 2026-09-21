@@ -7,6 +7,17 @@ All notable changes to Feedtack are listed here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- **An attachment on a reply can be removed before sending it.** The reply box only printed
+  a text counter, with no thumbnail and no "×", so whatever you uploaded there could not be
+  taken back: either the reply went out with the wrong file or you wrote it again. The new
+  comment box did have the "×", which is why the gap went unnoticed. Both boxes now share
+  `filaAdjunto()`. It only covers what has NOT been sent: an attachment that already left
+  travels inside the email, and removing it from the widget removes it from nobody's inbox.
+  New test `qa/qa-adjunto-respuesta.mjs` (real browser, no network, no backend).
+- **One attachment is no longer announced as "1 adjunto(s)".** The counter read
+  `1 adjunto(s), en el correo que nos llegó`: the `(s)` does not read as language, and the
+  trailing clause was false in one of the three places it appeared (the draft counter, before
+  anything was sent). Singular and plural are two separate strings now, in both languages.
 - **The browser tests run on other people's machines.** All ten of them imported Playwright
   through an absolute path on the author's computer, so nobody else could run a single one.
   They now go through `qa/navegador.mjs`, which resolves it from `FEEDTACK_PLAYWRIGHT`, from
