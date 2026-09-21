@@ -12,7 +12,14 @@ CREATE TABLE IF NOT EXISTS comentarios (
   -- what it says
   mensaje     TEXT NOT NULL DEFAULT '',
   senalados   TEXT NOT NULL DEFAULT '[]',   -- JSON: [{selector, texto, rect}]
-  n_adjuntos  INTEGER NOT NULL DEFAULT 0,   -- just the count; the files live in R2, see avisos_pendientes
+  n_adjuntos  INTEGER NOT NULL DEFAULT 0,   -- how many files it carries
+  -- WHICH files (21 September 2026). JSON: [{clave, nombre, tipo, bytes}], the files
+  -- themselves live in R2. Until this column existed only the count was stored and the
+  -- keys lived in `avisos_pendientes`, the notification queue, which groups replies under
+  -- their parent, so the panel could say "2 attachments" and nobody could tell what they
+  -- were. Empty on anything written before this, and on installs with no BASE_PUBLICA
+  -- (there the files ride inside the email and never reach R2).
+  adjuntos    TEXT NOT NULL DEFAULT '[]',
 
   -- who
   autor       TEXT NOT NULL DEFAULT '',
@@ -47,6 +54,7 @@ CREATE TABLE IF NOT EXISTS respuestas (
   mensaje      TEXT NOT NULL DEFAULT '',
   senalados    TEXT NOT NULL DEFAULT '[]',   -- a reply can point at another area without creating a pin
   n_adjuntos   INTEGER NOT NULL DEFAULT 0,
+  adjuntos     TEXT NOT NULL DEFAULT '[]',   -- same as in `comentarios`: WHICH files, see above
   autor        TEXT NOT NULL DEFAULT '',
   autor_id     TEXT NOT NULL,
   creado       TEXT NOT NULL,

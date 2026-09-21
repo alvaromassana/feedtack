@@ -511,6 +511,54 @@ async function caso11() {
   await parar();
 }
 
+async function caso12() {
+  console.log('\n12) la API dice QUÉ ficheros lleva cada comentario, no solo cuántos');
+  await arrancar({ VENTANA_MINUTOS: '30', CORTE_COMENTARIOS: '10' });
+  const base = `http://127.0.0.1:${PUERTO_WORKER}`;
+  const idConFoto = await comentar('este lleva un plano', { adjunto: { nombre: 'plano.png', datos: Buffer.alloc(64, 7) } });
+  await comentar('este no lleva nada');
+
+  /* Y una RESPUESTA con su propio fichero: en la cola de avisos las respuestas cuelgan
+     del id del comentario PADRE, así que si la lista se leyera de ahí, este fichero
+     aparecería como si fuera del comentario. */
+  const form = new FormData();
+  form.set('autor_id', 'otro-autor');
+  form.set('autor', 'Quien Responde');
+  form.set('mensaje', 'y aquí va el detalle');
+  form.set('adjunto1', new Blob([Buffer.alloc(32, 3)], { type: 'image/png' }), 'detalle.png');
+  await fetch(`${base}/api/comments/${idConFoto}/replies`, { method: 'POST', headers: { Origin: ORIGEN }, body: form });
+  await esperar(1500);
+
+  const j = await (await fetch(`${base}/api/comments?site=prueba`, { headers: { Origin: ORIGEN } })).json();
+  const conFoto = (j.comments || []).find(c => c.id === idConFoto) || {};
+  const sinNada = (j.comments || []).find(c => c.message === 'este no lleva nada') || {};
+
+  comprobar('el comentario nombra su fichero',
+    (conFoto.files || []).length === 1 && conFoto.files[0].nombre === 'plano.png',
+    JSON.stringify(conFoto.files));
+  comprobar('y con la dirección para abrirlo',
+    /\/adjuntos\/.+plano\.png$/.test((conFoto.files || [{}])[0].enlace || ''),
+    (conFoto.files || [{}])[0].enlace);
+  comprobar('sin haber perdido el contador de siempre', conFoto.attachments === 1, String(conFoto.attachments));
+
+  const r = await fetch((conFoto.files || [{}])[0].enlace || 'http://127.0.0.1:1/');
+  comprobar('y esa dirección sirve el fichero', r.status === 200, `HTTP ${r.status}`);
+
+  const resp = (conFoto.replies || [])[0] || {};
+  comprobar('el fichero de la respuesta va en la RESPUESTA',
+    (resp.files || []).length === 1 && resp.files[0].nombre === 'detalle.png',
+    JSON.stringify(resp.files));
+  comprobar('y NO se cuela en el comentario padre',
+    !(conFoto.files || []).some(f => f.nombre === 'detalle.png'),
+    JSON.stringify(conFoto.files));
+
+  // CONTROL NEGATIVO: sin ficheros, lista vacía (no una lista inventada).
+  comprobar('un comentario sin adjuntos no trae lista',
+    Array.isArray(sinNada.files) && sinNada.files.length === 0 && sinNada.attachments === 0,
+    JSON.stringify(sinNada.files));
+  await parar();
+}
+
 // ─────────────────────────────────────────────── ejecución
 
 async function main() {
@@ -527,6 +575,7 @@ async function main() {
     await caso8();
     await caso9();
     await caso10();
+    await caso12();
     if (!process.argv.includes('--rapido')) await caso11();
     else console.log('\n11) reintento tras rechazo de Resend: SALTADO (--rapido)');
   } finally {

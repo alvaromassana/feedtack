@@ -156,10 +156,11 @@ async function crear(request, env, cors) {
      return an error, because the widget would read it as "it did not send" and the
      person would write it again. This call used to have no net, and a Resend failure
      ended in a 500 on top of a comment that was safely saved. */
-  await encolar(env, {
+  const guardados = await encolar(env, {
     tipo: 'nuevo',
     site, mensaje, autor, contexto, senalados, adjuntos, id
   });
+  await anotarAdjuntos(env, 'comentarios', id, guardados);
 
   return json({ ok: true, id }, 200, cors);
 }
@@ -205,13 +206,17 @@ async function responder(comentarioId, request, env, cors) {
      tiene que verse antes que una parada. */
   await env.DB.prepare('UPDATE comentarios SET actualizado = ? WHERE id = ?').bind(ahora, comentarioId).run();
 
-  await encolar(env, {
+  const guardados = await encolar(env, {
     tipo: 'respuesta',
     site: padre.site, mensaje, autor,
     contexto: JSON.parse(padre.contexto || '{}'),
     senalados, adjuntos, id: comentarioId,
     anterior: padre.mensaje
   });
+  /* 🔒 A la fila de la RESPUESTA, no a la del comentario: en la cola de avisos las dos
+     cuelgan del id del padre (es lo que agrupa el correo), así que la cola no sabe de
+     quién es cada fichero y esta fila es el único sitio donde eso queda escrito. */
+  await anotarAdjuntos(env, 'respuestas', id, guardados);
 
   return json({ ok: true, id }, 200, cors);
 }
@@ -223,7 +228,7 @@ async function listar(url, env, cors) {
   if (!site) return json({ error: 'falta el sitio' }, 400, cors);
 
   const { results } = await env.DB.prepare(
-    `SELECT id, url, ruta, titulo, mensaje, senalados, n_adjuntos, autor, autor_id,
+    `SELECT id, url, ruta, titulo, mensaje, senalados, n_adjuntos, adjuntos, autor, autor_id,
             estado, creado, actualizado, historial
      FROM comentarios WHERE site = ? ORDER BY creado ASC`
   ).bind(site).all();
@@ -231,7 +236,7 @@ async function listar(url, env, cors) {
   /* Las respuestas se traen de una vez y se reparten en memoria: una consulta mas, no
      una por comentario. */
   const { results: resp } = await env.DB.prepare(
-    `SELECT id, comentario, mensaje, senalados, n_adjuntos, autor, autor_id, creado
+    `SELECT id, comentario, mensaje, senalados, n_adjuntos, adjuntos, autor, autor_id, creado
      FROM respuestas WHERE site = ? ORDER BY creado ASC`
   ).bind(site).all();
 
@@ -242,6 +247,7 @@ async function listar(url, env, cors) {
       mensaje: r.mensaje,
       senalados: JSON.parse(r.senalados || '[]'),
       nAdjuntos: r.n_adjuntos,
+      adjuntos: listaAdjuntos(env, r.adjuntos),
       autor: r.autor,
       autorId: r.autor_id,
       creado: r.creado
@@ -257,6 +263,7 @@ async function listar(url, env, cors) {
     mensaje: c.mensaje,
     senalados: JSON.parse(c.senalados || '[]'),
     nAdjuntos: c.n_adjuntos,
+    adjuntos: listaAdjuntos(env, c.adjuntos),
     autor: c.autor,
     autorId: c.autor_id,
     estado: c.estado,
@@ -278,7 +285,7 @@ const CAMPOS_EN = {
   mensaje: 'message', senalados: 'targets', autor: 'author', autorId: 'authorId',
   estado: 'status', ruta: 'path', creado: 'created', actualizado: 'updated',
   titulo: 'title', respuestas: 'replies', nAdjuntos: 'attachments', editado: 'edited',
-  contexto: 'context'
+  contexto: 'context', adjuntos: 'files'
 };
 function enIngles(o) {
   const salida = { ...o };
@@ -514,7 +521,10 @@ async function encolar(env, datos) {
   if (datos.tipo === 'eliminado' || env.TANDAS === 'no' ||
       !env.TANDAS_DO || !env.ADJUNTOS || !env.DB ||
       (conAdjuntos && !env.BASE_PUBLICA)) {
-    return await seguro(() => avisar(env, datos), 'aviso inmediato');
+    await seguro(() => avisar(env, datos), 'aviso inmediato');
+    /* Por esta rama los ficheros NO llegan a R2 (viajan dentro del correo y ahí acaban),
+       así que no hay clave que guardar y el comentario se queda con su contador. */
+    return [];
   }
 
   let filaId = null;
@@ -545,6 +555,7 @@ async function encolar(env, datos) {
 
     const stub = env.TANDAS_DO.get(env.TANDAS_DO.idFromName(datos.site));
     await stub.encolar(datos.site);
+    return guardados;
   } catch (e) {
     console.error('feedtack: la cola fallo, se avisa en el acto', e && e.message);
     /* 🔒 Before sending it by hand it has to be TAKEN OUT of the queue. Left there, the
@@ -555,10 +566,49 @@ async function encolar(env, datos) {
       const borrado = await seguro(() => env.DB.prepare(
         'DELETE FROM avisos_pendientes WHERE id = ? AND enviado IS NULL AND reclamo IS NULL'
       ).bind(filaId).run(), 'sacar de la cola');
-      if (borrado && borrado.meta && borrado.meta.changes === 0) return;
+      if (borrado && borrado.meta && borrado.meta.changes === 0) return [];
     }
     await seguro(() => avisar(env, datos), 'aviso inmediato tras fallo de cola');
   }
+  return [];
+}
+
+/* Writes down WHICH files a comment (or a reply) carries, next to the comment itself.
+   Until 21 September 2026 only the count was stored: the names and R2 keys lived in the
+   notification queue, which groups replies under their parent, so the panel could say
+   "2 attachments" and nobody could tell what they were or open them.
+   It never brings the request down: the comment is already saved and the files are
+   already in R2. If this fails, the panel falls back to the count, which is what it
+   showed before. */
+async function anotarAdjuntos(env, tabla, id, guardados) {
+  if (tabla !== 'comentarios' && tabla !== 'respuestas') return;  // el nombre va en el SQL
+  if (!guardados || !guardados.length) return;
+  await seguro(() => env.DB.prepare(`UPDATE ${tabla} SET adjuntos = ? WHERE id = ?`)
+    .bind(JSON.stringify(guardados), id).run(), 'anotar los adjuntos');
+}
+
+/* What the panel gets about a comment's files: name, type and the address to open it.
+   The R2 key does NOT go out: it is only useful for opening the file, and that is what
+   the link already is.
+   🔴 A comment written before 21 September 2026 has nothing stored here, and that is not
+   an error: it answers an empty list and the panel keeps showing the count. Unreadable
+   JSON is treated the same way, because a broken attachment list cannot take the whole
+   list of comments down. */
+function listaAdjuntos(env, crudo) {
+  let lista;
+  try { lista = JSON.parse(crudo || '[]'); }
+  catch { return []; }
+  if (!Array.isArray(lista)) return [];
+  return lista
+    .filter(a => a && a.clave && a.nombre)
+    .map(a => ({ nombre: a.nombre, tipo: a.tipo || '', bytes: a.bytes || 0, enlace: enlaceAdjunto(env, a.clave) }));
+}
+
+/* The public address of a stored file. Empty when BASE_PUBLICA is not configured, and
+   then the panel shows the name without a link instead of a broken one. */
+function enlaceAdjunto(env, clave) {
+  const base = (env.BASE_PUBLICA || '').replace(/\/$/, '');
+  return base ? `${base}/adjuntos/${clave.split('/').map(encodeURIComponent).join('/')}` : '';
 }
 
 /* Wraps something that must not be able to bring the request down: the client's comment
@@ -581,13 +631,33 @@ async function salud(env, cors) {
       'SELECT COUNT(*) n, MIN(creado) viejo FROM avisos_pendientes WHERE enviado IS NULL'
     ).first();
     const minutos = r && r.viejo ? Math.round((Date.now() - Date.parse(r.viejo)) / 60000) : 0;
-    return json({ ...base, cola: { pendientes: r ? r.n : 0, mas_viejo_minutos: minutos } }, 200, cors);
+    return json({ ...base, cola: { pendientes: r ? r.n : 0, mas_viejo_minutos: minutos }, adjuntos: await saludAdjuntos(env) }, 200, cors);
   } catch (e) {
     /* Not "ok": batching is configured and cannot work. */
     return json({
       ok: false, servicio: 'feedtack', tandas: 'configuradas pero SIN TABLA',
       cola: 'falta avisos_pendientes: aplica worker/esquema.sql', detalle: String(e && e.message)
     }, 500, cors);
+  }
+}
+
+/* Two mute failures around the attachment list, and /salud is where they show:
+     · the column was never added (the migration was skipped): then EVERY listing blows
+       up and the panel draws an empty list without a word, which is the worst of the two;
+     · the column is there and the UPDATE that fills it fails: the comment keeps its
+       count and loses the names, quietly. One in a week is a blip; a steady number is
+       a database that is not taking the writes.
+   Only the last 7 days are counted: anything older is from before this existed and
+   would leave the number high forever, which is the same as not having it. */
+async function saludAdjuntos(env) {
+  try {
+    const r = await env.DB.prepare(
+      `SELECT COUNT(*) n FROM comentarios
+       WHERE n_adjuntos > 0 AND adjuntos = '[]' AND creado > datetime('now', '-7 days')`
+    ).first();
+    return { columna: 'ok', sin_nombres_7d: r ? r.n : 0 };
+  } catch (e) {
+    return { columna: 'FALTA: aplica worker/migraciones/2026-09-21-adjuntos.sql', detalle: String(e && e.message) };
   }
 }
 
@@ -741,7 +811,6 @@ export class Tandas extends DurableObject {
    thing that was needed for those already coming from a failed attempt. */
 async function enviarTanda(env, site, pendientes, motivo) {
   idiomaCorreo(env);
-  const base = (env.BASE_PUBLICA || '').replace(/\/$/, '');
   const eventos = [];
   const adjuntosCorreo = [];
   let presupuesto = PRESUPUESTO_ADJUNTOS;
@@ -753,7 +822,7 @@ async function enviarTanda(env, site, pendientes, motivo) {
     const listado = [];
 
     for (const a of guardados) {
-      const enlace = base ? `${base}/adjuntos/${a.clave.split('/').map(encodeURIComponent).join('/')}` : '';
+      const enlace = enlaceAdjunto(env, a.clave);
       let adjuntado = false;
       if (!sinAdjuntos && a.bytes <= presupuesto) {
         const obj = await env.ADJUNTOS.get(a.clave);

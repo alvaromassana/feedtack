@@ -144,6 +144,7 @@
       comentario: 'Comentario ', noExiste: 'Ese comentario ya no está.',
       escrito: 'Escrito ', por: ' por ', editado: 'Editado ',
       adjunto1: '1 adjunto', adjuntosN: '%s adjuntos', estaEn: 'Está en ',
+      abrirAdjunto: 'Abrir el archivo',
       editar: 'Editar', editarAria: 'Editar el comentario',
       guardar: 'Guardar cambios', guardando: 'Guardando…', cancelar: 'Cancelar',
       avisoEdicion: 'Te avisamos: nos llega el aviso de que lo has cambiado.',
@@ -209,6 +210,7 @@
       comentario: 'Comment ', noExiste: 'That comment is gone.',
       escrito: 'Written ', por: ' by ', editado: 'Edited ',
       adjunto1: '1 attachment', adjuntosN: '%s attachments', estaEn: 'It is on ',
+      abrirAdjunto: 'Open the file',
       editar: 'Edit', editarAria: 'Edit the comment',
       guardar: 'Save changes', guardando: 'Saving…', cancelar: 'Cancel',
       avisoEdicion: 'Heads up: we get notified that you changed it.',
@@ -529,6 +531,15 @@ textarea::placeholder, input::placeholder { color: #64748b; }
   font-size: 16px; line-height: 1; flex: none; border-radius: 5px; font-family: inherit;
 }
 .quitar:hover { color: #f87171; background: rgba(248,113,113,.12); }
+/* Los ficheros de algo ya enviado: se nombran y se abren. */
+.adj-envios { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 5px; }
+.adj-env {
+  display: inline-block; max-width: 100%; padding: 3px 8px; border-radius: 7px;
+  background: #1e293b; border: 1px solid #334155; color: #cbd5e1; font-size: 11px;
+  text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+a.adj-env:hover { border-color: var(--acento); color: #f1f5f9; }
+.adj-env--plano { color: #94a3b8; }
 .play { width: 30px; height: 30px; flex: none; border: 0; border-radius: 50%; background: var(--acento); color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 .play:hover { filter: brightness(1.12); }
 .play svg { width: 12px; height: 12px; fill: currentColor; stroke: none; }
@@ -1288,6 +1299,29 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     return fila;
   }
 
+  /* Los ficheros de algo YA enviado: se nombran y se abren al pulsarlos. Si no vienen
+     nombres (un comentario anterior al 21-sep-2026, o un servidor sin dirección pública
+     configurada) se queda el contador de siempre, que es lo único que se sabe de él. */
+  function adjuntosEnviados(x) {
+    var lista = x.adjuntos || x.files || [];
+    if (!lista.length) return el('div', { class: 'resp-sen', text: txtAdj(x.nAdjuntos) });
+    var caja = el('div', { class: 'adj-envios' });
+    /* Si los nombres no dan la cuenta (una lista a medias), el contador se queda: sin él
+       desaparecerían ficheros de la pantalla sin que nada lo dijera. */
+    if (lista.length !== x.nAdjuntos) caja.appendChild(el('span', { class: 'adj-env adj-env--plano', text: txtAdj(x.nAdjuntos) }));
+    lista.forEach(function (a) {
+      if (a.enlace) {
+        caja.appendChild(el('a', {
+          class: 'adj-env', href: a.enlace, target: '_blank', rel: 'noopener noreferrer',
+          title: txt('abrirAdjunto'), text: a.nombre
+        }));
+      } else {
+        caja.appendChild(el('span', { class: 'adj-env adj-env--plano', text: a.nombre }));
+      }
+    });
+    return caja;
+  }
+
   function pintarAdjuntos() {
     if (!refs.adjuntos) return;
     refs.adjuntos.textContent = '';
@@ -1421,7 +1455,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         if ((r.senalados || []).length) {
           m.appendChild(el('div', { class: 'resp-sen', text: r.senalados[0].etiqueta + (r.senalados[0].texto ? ' · ' + r.senalados[0].texto.slice(0, 34) : '') }));
         }
-        if (r.nAdjuntos) m.appendChild(el('div', { class: 'resp-sen', text: txtAdj(r.nAdjuntos) }));
+        if (r.nAdjuntos) m.appendChild(adjuntosEnviados(r));
         caja.appendChild(m);
       });
     }
@@ -1611,7 +1645,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     var datos = el('div', { class: 'datos' });
     datos.appendChild(el('div', { text: txt('escrito') + haceRato(c.creado) + (c.autor ? txt('por') + c.autor : '') }));
     if (c.editado) datos.appendChild(el('div', { text: txt('editado') + haceRato(c.actualizado) }));
-    if (c.nAdjuntos) datos.appendChild(el('div', { text: txtAdj(c.nAdjuntos) }));
+    if (c.nAdjuntos) datos.appendChild(adjuntosEnviados(c));
     if (!deEstaPagina(c)) datos.appendChild(el('div', { text: txt('estaEn') + c.ruta }));
     cuerpo.appendChild(datos);
     cuerpo.appendChild(refs.error);

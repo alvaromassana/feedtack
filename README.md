@@ -145,7 +145,7 @@ Open `worker/wrangler.toml` and set:
 | `DESTINO` | The address the comments are emailed to, normally yours |
 | `REMITENTE` | The sender, on a domain you verified in Resend, e.g. `Feedtack <feedtack@youragency.com>` |
 | `ORIGENES_PERMITIDOS` | Comma-separated list of the sites allowed to send comments, e.g. `https://staging.client.com,https://client.pages.dev`. Wildcards like `*.pages.dev` work. Anything else is blocked by CORS, on purpose. |
-| `BASE_PUBLICA` | Your Worker's own URL, so screenshots too big for the email get a download link. Leave it empty and the attachments simply travel without a link. You will only know the URL after the first deploy, so fill this one in and deploy again. |
+| `BASE_PUBLICA` | Your Worker's own URL (not your site's, not your Pages domain): it is what turns an attachment's key into an address that opens, both for screenshots too big to travel inside the email and for the file names listed in the panel. Point it anywhere else and every one of those links is a 404 nobody notices. Leave it empty and attachments travel without a link and are not listed by name. You will only know the URL after the first deploy, so fill this one in and deploy again. |
 
 `VENTANA_MINUTOS` and `CORTE_COMENTARIOS` control how comments are grouped into one email.
 The defaults are sensible; leave them alone until the volume tells you otherwise.

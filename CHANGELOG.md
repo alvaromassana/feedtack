@@ -6,6 +6,19 @@ All notable changes to Feedtack are listed here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **The panel says WHICH files a comment carries, and they open when you click them.** It
+  only ever stored how many: the names and R2 keys lived in `avisos_pendientes`, the
+  notification queue, which hangs replies off their parent comment, so "2 attachments" was
+  all anyone could know. Comments and replies now have an `adjuntos` column of their own,
+  filled right after the files reach R2, and the API returns it as `files` with a ready
+  link built from `BASE_PUBLICA`. Migration in `worker/migraciones/2026-09-21-adjuntos.sql`,
+  which also backfills whatever the queue still remembers (it marks rows as sent, it never
+  deletes them); replies are only backfilled when there is no doubt about whose file it is.
+  Anything older keeps showing its count, and so does an install with no `BASE_PUBLICA`.
+  `/salud` now reports the column and how many recent comments lost their names.
+  New test: case 12 of `worker/qa/qa-tandas.mjs` and `qa/qa-adjuntos-listados.mjs`.
+
 ### Fixed
 - **An attachment on a reply can be removed before sending it.** The reply box only printed
   a text counter, with no thumbnail and no "×", so whatever you uploaded there could not be
