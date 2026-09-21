@@ -143,7 +143,7 @@
       tuyo: 'tuyo', loEscribisteTu: 'lo escribiste tú', editadoMarca: '· editado',
       comentario: 'Comentario ', noExiste: 'Ese comentario ya no está.',
       escrito: 'Escrito ', por: ' por ', editado: 'Editado ',
-      adjuntosCorreo: ' adjunto(s), en el correo que nos llegó', estaEn: 'Está en ',
+      adjunto1: '1 adjunto', adjuntosN: '%s adjuntos', estaEn: 'Está en ',
       editar: 'Editar', editarAria: 'Editar el comentario',
       guardar: 'Guardar cambios', guardando: 'Guardando…', cancelar: 'Cancelar',
       avisoEdicion: 'Te avisamos: nos llega el aviso de que lo has cambiado.',
@@ -208,7 +208,7 @@
       tuyo: 'yours', loEscribisteTu: 'you wrote this', editadoMarca: '· edited',
       comentario: 'Comment ', noExiste: 'That comment is gone.',
       escrito: 'Written ', por: ' by ', editado: 'Edited ',
-      adjuntosCorreo: ' attachment(s), in the email we got', estaEn: 'It is on ',
+      adjunto1: '1 attachment', adjuntosN: '%s attachments', estaEn: 'It is on ',
       editar: 'Edit', editarAria: 'Edit the comment',
       guardar: 'Save changes', guardando: 'Saving…', cancelar: 'Cancel',
       avisoEdicion: 'Heads up: we get notified that you changed it.',
@@ -263,6 +263,9 @@
     var args = [].slice.call(arguments, 1);
     return args.length ? s.replace(/%s/g, function () { return args.shift(); }) : s;
   }
+
+  /* "1 adjunto(s)" no se lee: el singular y el plural son dos frases distintas. */
+  function txtAdj(n) { return n === 1 ? txt('adjunto1') : txt('adjuntosN', n); }
 
   // ---------------------------------------------------------------- utilidades
 
@@ -1410,7 +1413,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         if ((r.senalados || []).length) {
           m.appendChild(el('div', { class: 'resp-sen', text: r.senalados[0].etiqueta + (r.senalados[0].texto ? ' · ' + r.senalados[0].texto.slice(0, 34) : '') }));
         }
-        if (r.nAdjuntos) m.appendChild(el('div', { class: 'resp-sen', text: r.nAdjuntos + txt('adjuntosCorreo') }));
+        if (r.nAdjuntos) m.appendChild(el('div', { class: 'resp-sen', text: txtAdj(r.nAdjuntos) }));
         caja.appendChild(m);
       });
     }
@@ -1429,7 +1432,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
       pendientesAdj.push(respBorrador.senalados.map(function (x) { return x.etiqueta; }).join(', '));
     }
     if (respBorrador.adjuntos.length) {
-      pendientesAdj.push(respBorrador.adjuntos.length + txt('adjuntosCorreo'));
+      pendientesAdj.push(txtAdj(respBorrador.adjuntos.length));
     }
     if (pendientesAdj.length) caja.appendChild(el('div', { class: 'resp-sen', text: pendientesAdj.join('  ·  ') }));
 
@@ -1595,7 +1598,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
     var datos = el('div', { class: 'datos' });
     datos.appendChild(el('div', { text: txt('escrito') + haceRato(c.creado) + (c.autor ? txt('por') + c.autor : '') }));
     if (c.editado) datos.appendChild(el('div', { text: txt('editado') + haceRato(c.actualizado) }));
-    if (c.nAdjuntos) datos.appendChild(el('div', { text: c.nAdjuntos + txt('adjuntosCorreo') }));
+    if (c.nAdjuntos) datos.appendChild(el('div', { text: txtAdj(c.nAdjuntos) }));
     if (!deEstaPagina(c)) datos.appendChild(el('div', { text: txt('estaEn') + c.ruta }));
     cuerpo.appendChild(datos);
     cuerpo.appendChild(refs.error);
