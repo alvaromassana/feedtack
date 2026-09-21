@@ -11,7 +11,7 @@
  *
  * Salidas: 0 bien · 1 el "×" no está o no quita nada · 2 no se ha podido mirar.
  */
-import { chromium, CHROME } from './navegador.mjs';
+import { chromium, opcionesLanzar } from './navegador.mjs';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -36,7 +36,7 @@ const HTML = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>
 writeFileSync(FOTO, Buffer.from(PNG_1PX, 'base64'));
 
 const fallos = [];
-const navegador = await chromium.launch({ executablePath: CHROME });
+const navegador = await chromium.launch(opcionesLanzar());
 const pagina = await (await navegador.newContext()).newPage();
 
 await pagina.route('**/*', ruta => {
