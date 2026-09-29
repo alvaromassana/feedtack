@@ -939,7 +939,10 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
         var pin = el('div', { class: 'tk-pin', title: (c.mensaje || 'Comentario').slice(0, 80) },
           [el('span', { text: String(n) })]);
         pin.style.background = color;
-        pin.style.left = Math.max(4, p.x - 13) + 'px';
+        /* Anclada a algo fuera de la pantalla (un menú lateral cerrado, trasladado a la derecha),
+           la chincheta ensanchaba la página y en móvil aparecía scroll lateral. Se acota al ancho
+           visible: la chincheta queda en el borde en vez de empujar la página. */
+        pin.style.left = Math.min(Math.max(4, p.x - 13), document.documentElement.clientWidth - 40) + 'px';
         pin.style.top = Math.max(4, p.y - 13) + 'px';
         pin.setAttribute('data-feedtack-pin', c.id);
         pin.addEventListener('click', function (ev) {
