@@ -39,7 +39,8 @@ function sanitize_key( $s ) { return strtolower( preg_replace( '/[^a-z0-9_\-]/i'
 function sanitize_text_field( $s ) { return trim( strip_tags( $s ) ); }
 function sanitize_hex_color( $c ) { return preg_match( '/^#([A-Fa-f0-9]{3}|[A-Fa-f0-9]{6})$/', $c ) ? $c : null; }
 function checked() {} function selected() {} function submit_button() {}
-function settings_fields() {} function current_user_can( $c ) { return true; }
+function settings_fields() {}
+function current_user_can( $c ) { return 'unfiltered_html' === $c ? ( $GLOBALS['sim']['html'] ?? true ) : true; }
 function delete_option( $k ) {}
 
 require __DIR__ . '/feedtack/feedtack.php';
@@ -120,6 +121,22 @@ $suya = feedtack_url_script();
 $bien2 = ( $suya === 'https://otro.test/feedtack.js' );
 printf( "%s  una URL puesta a mano sigue mandando               %s\n", $bien2 ? '  ok ' : '  MAL', $suya );
 if ( ! $bien2 ) { $fallos[] = 'url propia'; }
+
+/* ── Sin unfiltered_html no se cambia el fichero del widget (9-nov-2026) ───────
+   Ese ajuste acaba como <script src> en todo el front: en un multisite, el admin de un
+   subsitio (sin unfiltered_html) metia JS que ejecutaba el superadministrador. Se
+   conserva lo guardado; con el permiso, se sigue pudiendo cambiar. */
+$GLOBALS['sim']['opcion'] = array( 'script' => 'https://bueno.test/feedtack.js' );
+$GLOBALS['sim']['html']   = false;
+$r3 = feedtack_sanear( array_merge( feedtack_por_defecto(), array( 'script' => 'https://malo.test/x.js' ) ) );
+$bien3 = ( $r3['script'] === 'https://bueno.test/feedtack.js' );
+printf( "%s  sin unfiltered_html no se cambia el fichero          %s\n", $bien3 ? '  ok ' : '  MAL', $r3['script'] );
+if ( ! $bien3 ) { $fallos[] = 'script sin unfiltered_html'; }
+$GLOBALS['sim']['html'] = true;
+$r4 = feedtack_sanear( array_merge( feedtack_por_defecto(), array( 'script' => 'https://otro.test/y.js' ) ) );
+$bien4 = ( $r4['script'] === 'https://otro.test/y.js' );
+printf( "%s  con unfiltered_html si se cambia                     %s\n", $bien4 ? '  ok ' : '  MAL', $r4['script'] );
+if ( ! $bien4 ) { $fallos[] = 'script con unfiltered_html'; }
 
 echo "\n" . ( $fallos ? 'FALLOS: ' . implode( ', ', $fallos ) : 'TODO CORRECTO' ) . "\n";
 exit( $fallos ? 1 : 0 );

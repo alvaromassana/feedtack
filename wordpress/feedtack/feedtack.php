@@ -184,6 +184,12 @@ function feedtack_sanear( $entrada ) {
 		// Both accept empty: an empty endpoint turns the widget off, an empty script uses the local copy.
 		if ( ! $url ) { $salida[ $campo ] = ''; }
 	}
+	// The script URL ends up as <script src> on the whole front end: whoever cannot post
+	// unfiltered HTML (a subsite admin on a multisite) cannot change it either.
+	if ( ! current_user_can( 'unfiltered_html' ) ) {
+		$actual           = feedtack_ajustes();
+		$salida['script'] = $actual['script'];
+	}
 
 	$color = isset( $entrada['color'] ) ? sanitize_hex_color( trim( $entrada['color'] ) ) : '';
 	$salida['color'] = $color ? $color : $d['color'];

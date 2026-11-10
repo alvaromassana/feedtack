@@ -79,7 +79,17 @@
   // It is what allows marking things as resolved.
   var CLAVE_ADMIN = (function () {
     var p = parametro('admin');
-    if (p) { guardar('admin', p); return p; }
+    if (p) {
+      guardar('admin', p);
+      /* Out of the address bar at once: left there it travelled inside the url of every
+         comment written on that page, the history and any Referer. Keeps the rest. */
+      try {
+        var u = new URL(location.href);
+        u.searchParams.delete('feedtack_admin'); u.searchParams.delete('tack_admin');
+        history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+      } catch (e) {}
+      return p;
+    }
     return leer('admin') || '';
   })();
 
@@ -1011,7 +1021,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
        se abra ese comentario y se baje hasta su sitio. Sin esto te dejaba en lo alto de
        la pagina y tenias que buscarlo tu, que es justo lo que esto viene a evitar. */
     if (!deEstaPagina(c)) {
-      location.href = c.url.split('#')[0] + '#tack=' + c.id;
+      if (/^https?:/i.test(c.url)) location.href = c.url.split('#')[0] + '#tack=' + c.id;
       return;
     }
 
@@ -1710,7 +1720,7 @@ input[type=text].pide { border-color: #f87171 !important; box-shadow: 0 0 0 3px 
        with an element the one above already covers it, and it highlights the spot too. */
     if (!deEstaPagina(c) && !(c.senalados || []).length) {
       var ir = el('button', { class: 'secundario', type: 'button', text: txt('irPagina') });
-      ir.addEventListener('click', function () { location.href = c.url; });
+      ir.addEventListener('click', function () { if (/^https?:/i.test(c.url)) location.href = c.url; });
       botones.push(ir);
     }
 

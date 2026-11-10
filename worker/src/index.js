@@ -127,8 +127,10 @@ async function crear(request, env, cors) {
 
   const mensaje = texto(form.get('mensaje'), 8000);
   const autor = texto(form.get('autor'), 120);
-  const contexto = parsear(form.get('contexto')) || {};
-  const senalados = parsear(form.get('senalados')) || [];
+  const crudo = parsear(form.get('contexto'));
+  const contexto = crudo && typeof crudo === 'object' && !Array.isArray(crudo) ? crudo : {};
+  contexto.url = urlSegura(contexto.url);
+  const senalados = senales(parsear(form.get('senalados')));
 
   const recogidos = await recogerAdjuntos(form);
   if (recogidos.error) return json({ error: recogidos.error }, 413, cors);
@@ -184,7 +186,7 @@ async function responder(comentarioId, request, env, cors) {
 
   const mensaje = texto(form.get('mensaje'), 8000);
   const autor = texto(form.get('autor'), 120);
-  const senalados = parsear(form.get('senalados')) || [];
+  const senalados = senales(parsear(form.get('senalados')));
 
   const recogidos = await recogerAdjuntos(form);
   if (recogidos.error) return json({ error: recogidos.error }, 413, cors);
@@ -209,7 +211,7 @@ async function responder(comentarioId, request, env, cors) {
   const guardados = await encolar(env, {
     tipo: 'respuesta',
     site: padre.site, mensaje, autor,
-    contexto: JSON.parse(padre.contexto || '{}'),
+    contexto: (parsear(padre.contexto) || {}),
     senalados, adjuntos, id: comentarioId,
     anterior: padre.mensaje
   });
@@ -245,7 +247,7 @@ async function listar(url, env, cors) {
     (porComentario[r.comentario] = porComentario[r.comentario] || []).push({
       id: r.id,
       mensaje: r.mensaje,
-      senalados: JSON.parse(r.senalados || '[]'),
+      senalados: senales(parsear(r.senalados)),
       nAdjuntos: r.n_adjuntos,
       adjuntos: listaAdjuntos(env, r.adjuntos),
       autor: r.autor,
@@ -257,11 +259,11 @@ async function listar(url, env, cors) {
   const comentarios = (results || []).map(c => enIngles({
     id: c.id,
     respuestas: (porComentario[c.id] || []).map(enIngles),
-    url: c.url,
+    url: urlSegura(c.url),
     ruta: c.ruta,
     titulo: c.titulo,
     mensaje: c.mensaje,
-    senalados: JSON.parse(c.senalados || '[]'),
+    senalados: senales(parsear(c.senalados)),
     nAdjuntos: c.n_adjuntos,
     adjuntos: listaAdjuntos(env, c.adjuntos),
     autor: c.autor,
@@ -319,8 +321,8 @@ async function editar(id, request, env, cors) {
   // Only the author edits their own. This is a private review site, not strong auth.
   if (fila.autor_id !== autorId) return json({ error: 'no es tuyo' }, 403, cors);
 
-  const senalados = Array.isArray(cuerpo.senalados)
-    ? cuerpo.senalados : JSON.parse(fila.senalados || '[]');
+  const senalados = senales(Array.isArray(cuerpo.senalados)
+    ? cuerpo.senalados : parsear(fila.senalados));
 
   if (!nuevo && !senalados.length) {
     return json({ error: 'el comentario no puede quedar vacío' }, 400, cors);
@@ -345,7 +347,7 @@ async function editar(id, request, env, cors) {
     mensaje: nuevo,
     anterior: fila.mensaje,
     autor: fila.autor,
-    contexto: JSON.parse(fila.contexto || '{}'),
+    contexto: (parsear(fila.contexto) || {}),
     senalados,
     adjuntos: [],
     id
@@ -407,8 +409,8 @@ async function cambiarEstado(id, request, env, cors) {
       site: fila.site,
       mensaje: fila.mensaje,
       autor: fila.autor,
-      contexto: JSON.parse(fila.contexto || '{}'),
-      senalados: JSON.parse(fila.senalados || '[]'),
+      contexto: (parsear(fila.contexto) || {}),
+      senalados: senales(parsear(fila.senalados)),
       adjuntos: [], id
     });
   }
@@ -469,8 +471,8 @@ async function eliminar(id, request, env, cors) {
       site: fila.site,
       mensaje: fila.mensaje,
       autor: fila.autor,
-      contexto: JSON.parse(fila.contexto || '{}'),
-      senalados: JSON.parse(fila.senalados || '[]'),
+      contexto: (parsear(fila.contexto) || {}),
+      senalados: senales(parsear(fila.senalados)),
       adjuntos: [], id
     });
   } catch (e) {
@@ -816,8 +818,11 @@ async function enviarTanda(env, site, pendientes, motivo) {
   let presupuesto = PRESUPUESTO_ADJUNTOS;
 
   for (const fila of pendientes) {
-    const datos = JSON.parse(fila.payload);
-    const guardados = JSON.parse(fila.adjuntos || '[]');
+    /* A row nobody can read (tack-api writes here too) is skipped, never allowed to
+       sink the whole batch again and again. */
+    const datos = parsear(fila.payload);
+    if (!datos || typeof datos !== 'object') { console.error('feedtack: aviso ilegible en la cola', fila.id); continue; }
+    const guardados = [].concat(parsear(fila.adjuntos) || []);
     const sinAdjuntos = fila.intentos >= INTENTOS_SIN_ADJUNTOS;
     const listado = [];
 
@@ -1124,13 +1129,34 @@ function base64(buf) {
 
 const nombreSeguro = n => String(n).replace(/[^\w.\- ]+/g, '_').slice(0, 100) || 'adjunto';
 
-function resumir(mensaje, senalados = []) {
+function resumir(mensaje, senalados) {
+  senalados = senales(senalados);
   const t = (mensaje || '').replace(/\s+/g, ' ').trim();
   if (t) return t.slice(0, 60) + (t.length > 60 ? '…' : '');
   if (senalados.length > 1) return `comentario sobre ${senalados.length} elementos`;
   if (senalados.length) return 'comentario sobre ' + (senalados[0].texto || senalados[0].etiqueta || 'un elemento');
   return 'nuevo comentario';
 }
+
+/* A url from outside (the widget, or tack-api, which writes to the same base without
+   these checks): only http(s), and never with the team key that ?feedtack_admin= leaves
+   in the address bar. Applied on READ as well, because widgets are pinned to a commit
+   and old rows are already in the base. */
+function urlSegura(u) {
+  try {
+    const x = new URL(String(u || ''));
+    if (x.protocol !== 'http:' && x.protocol !== 'https:') return '';
+    if (!x.searchParams.has('feedtack_admin') && !x.searchParams.has('tack_admin')) return String(u);
+    x.searchParams.delete('feedtack_admin'); x.searchParams.delete('tack_admin');
+    return x.toString();
+  } catch { return ''; }
+}
+
+/* `senalados` is whatever the widget sent: keep only objects, so one [null] can no longer
+   break the panel or block a site's notifications for good. Lenient on purpose: pins
+   re-anchor from fields this file never reads. */
+const senales = v => (Array.isArray(v) ? v : []).filter(s => s && typeof s === 'object' && !Array.isArray(s));
+const numero = v => { const n = Math.round(Number(v)); return Number.isFinite(n) ? n : 0; };
 
 /* Todo lo que viene de fuera es DATO, nunca markup. */
 function esc(s) {
@@ -1139,11 +1165,12 @@ function esc(s) {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], adjuntos = [], tipo, porSuAutor }) {
+function plantilla({ site, mensaje, anterior, autor, contexto, senalados, adjuntos = [], tipo, porSuAutor }) {
   const c = contexto || {};
+  senalados = senales(senalados);
   const filas = [
     [T.pagina, c.titulo],
-    [T.url, c.url],
+    [T.url, urlSegura(c.url)],
     [T.enviadoPor, autor || T.sinIdentificar],
     [T.pantalla, c.viewport ? T.ventanaMonitor(c.viewport, c.pantalla) : ''],
     [T.navegador, navegadorLegible(c.navegador)],
@@ -1168,7 +1195,7 @@ function plantilla({ site, mensaje, anterior, autor, contexto, senalados = [], a
         ${senalados.length > 1 ? `<div style="font:600 12px/1.4 -apple-system,sans-serif;color:#6366f1;margin-bottom:4px">${i + 1}</div>` : ''}
         ${s.texto ? `<div style="font:400 14px/1.5 -apple-system,sans-serif;color:#1e1b4b;margin-bottom:6px">"${esc(s.texto)}"</div>` : ''}
         <code style="display:block;font:400 12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:#4338ca;word-break:break-all">${esc(s.selector)}</code>
-        ${s.rect ? `<div style="font:400 12px/1.5 -apple-system,sans-serif;color:#6366f1;margin-top:6px">${T.desdeArriba(s.rect.w, s.rect.h, s.rect.y)}</div>` : ''}
+        ${s.rect ? `<div style="font:400 12px/1.5 -apple-system,sans-serif;color:#6366f1;margin-top:6px">${T.desdeArriba(numero(s.rect.w), numero(s.rect.h), numero(s.rect.y))}</div>` : ''}
       </div>`).join('')}
     </div>` : '';
 
@@ -1232,9 +1259,9 @@ function plantillaTanda(site, eventos, motivo) {
   const franja = T.franja(hora(desde), hora(hasta));
 
   const tarjetas = eventos.map((e, i) => {
-    const c = e.contexto || {};
+    const c = { ...(e.contexto || {}), url: urlSegura((e.contexto || {}).url) };
     const cabecera = `${ICONO[e.tipo] || '💬'} ${T.tarjeta[e.tipo] || e.tipo}`;
-    const senal = (e.senalados || []).map(s => `
+    const senal = senales(e.senalados).map(s => `
         <div style="margin-top:8px">
           ${s.texto ? `<div style="font:400 13px/1.5 -apple-system,sans-serif;color:#1e1b4b">"${esc(s.texto)}"</div>` : ''}
           <code style="display:block;font:400 11.5px/1.5 ui-monospace,Menlo,monospace;color:#4338ca;word-break:break-all">${esc(s.selector)}</code>
